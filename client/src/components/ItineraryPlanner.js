@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FaCalendarAlt, FaMapMarkedAlt, FaUtensils, FaSun, FaMoon, FaDownload } from 'react-icons/fa';
-import aiService from '../services/aiService';
+import aiService from '../services/temp';
 
 const ItineraryPlanner = ({ hotel }) => {
   const [duration, setDuration] = useState(3);

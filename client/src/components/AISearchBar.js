@@ -9,7 +9,7 @@ import {
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import aiService from '../services/aiService';
+import aiService from '../services/temp';
 import VoiceSearch from './VoiceSearch';
 
 const AISearchBar = ({ onSearchResults, initialQuery = '', autoSearch = false }) => {

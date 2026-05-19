@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaSun, FaCloud, FaCloudRain, FaWind, FaTint, FaMapMarkerAlt, FaSpinner, FaCloudSun, FaSnowflake } from 'react-icons/fa';
-import AIService from '../services/aiService';
+import AIService from '../services/temp';
 
 const WeatherWidget = ({ city }) => {
   const [weather, setWeather] = useState(null);
