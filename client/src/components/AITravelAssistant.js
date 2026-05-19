@@ -12,8 +12,8 @@ import {
   FaGlobe, FaLanguage, FaSearch, FaHistory, FaTags, FaBed
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import aiService from "../services/aiService";
+import { motion, AnimatePresence } from 'framer-motion';  
+import aiService from '../services/aiService';
 
 const AITravelAssistant = () => {
   const [query, setQuery] = useState('');
