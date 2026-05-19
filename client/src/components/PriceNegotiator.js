@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FaGavel, FaCheckCircle, FaTimesCircle, FaRocket } from 'react-icons/fa';
-import aiService from '../services/temp';
+import aiService from '../services/aiService';
 
 const PriceNegotiator = ({ hotelId, currentPrice, hotelName }) => {
   const [budget, setBudget] = useState(currentPrice * 0.8);
