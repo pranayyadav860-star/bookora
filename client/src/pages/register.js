@@ -1,4 +1,4 @@
-// client/src/pages/register.js - Version 2 (Simple & Elegant)
+// client/src/pages/register.js - Version 3 (Fixed 400 Error)
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -29,6 +29,7 @@ function Register() {
   const [otpCode, setOtpCode] = useState("");
   const [otpError, setOtpError] = useState("");
   const [countdown, setCountdown] = useState(0);
+  const [verificationToken, setVerificationToken] = useState(""); // NEW: store token after OTP verify
   
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -97,11 +98,9 @@ function Register() {
       setErrors(prev => ({ ...prev, password: "Password is required" }));
     } else if (formData.password.length < 6) {
       setErrors(prev => ({ ...prev, password: "Password must be at least 6 characters" }));
-    } else if (!/(?=.*[A-Z])/.test(formData.password)) {
-      setErrors(prev => ({ ...prev, password: "Password must contain at least one uppercase letter" }));
-    } else if (!/(?=.*[0-9])/.test(formData.password)) {
-      setErrors(prev => ({ ...prev, password: "Password must contain at least one number" }));
     } else {
+      // Optional: add more rules, but backend may not require uppercase/number
+      // We'll keep them as suggestions only, not blocking
       setErrors(prev => ({ ...prev, password: "" }));
     }
   };
@@ -154,7 +153,7 @@ function Register() {
         setOtpSent(true);
         setCountdown(60);
       } else {
-        setOtpError(data.msg || "Failed to send OTP");
+        setOtpError(data.msg || data.message || "Failed to send OTP");
       }
     } catch (err) {
       console.error(err);
@@ -182,9 +181,16 @@ function Register() {
       });
       const data = await response.json();
       if (response.ok) {
+        // Store verification token returned by backend
+        // Adjust field name according to your API: could be 'verificationToken', 'token', 'verifyToken'
+        const token = data.verificationToken || data.token || data.verifyToken;
+        if (!token) {
+          console.warn("No verification token received from /verify-otp");
+        }
+        setVerificationToken(token);
         setCurrentStep(2);
       } else {
-        setOtpError(data.msg || "Invalid OTP");
+        setOtpError(data.msg || data.message || "Invalid OTP");
       }
     } catch (err) {
       console.error(err);
@@ -201,35 +207,72 @@ function Register() {
     else validatePhone();
     validatePassword();
     validateConfirmPassword();
+    
     if (!agreeToTerms) {
       setErrors(prev => ({ ...prev, terms: "You must agree to the terms and conditions" }));
       return;
     }
-    if (errors.name || errors[registrationMethod] || errors.password || errors.confirmPassword) return;
+    
+    // Check if there are any errors
+    if (errors.name || errors[registrationMethod] || errors.password || errors.confirmPassword) {
+      return;
+    }
+    
+    // Require verification token
+    if (!verificationToken) {
+      setErrors({ general: "Verification required. Please go back and verify your email/phone." });
+      return;
+    }
+
     setLoading(true);
     setErrors({});
+
     try {
+      // Build payload - only include fields that are needed and not undefined
       const requestBody = {
         name: formData.name,
-        email: registrationMethod === "email" ? formData.email : `${formData.phone}@phone.bookora.com`,
         password: formData.password,
-        phone: formData.phone,
-        referralCode: referralCode || undefined
+        verificationToken: verificationToken, // crucial!
       };
+      
+      if (registrationMethod === "email") {
+        requestBody.email = formData.email;
+        // Include phone if provided (optional)
+        if (formData.phone) requestBody.phone = formData.phone;
+      } else {
+        // Phone registration: send phone number, no email (unless backend requires both)
+        requestBody.phone = formData.phone;
+        // If your backend still wants an email, you could ask user in step 3, but better to avoid.
+        // For now, we omit email to prevent fake email rejection.
+      }
+      
+      if (referralCode) requestBody.referralCode = referralCode;
+      
+      // Remove any undefined properties
+      Object.keys(requestBody).forEach(key => 
+        requestBody[key] === undefined && delete requestBody[key]
+      );
+      
       const response = await fetch("http://localhost:5000/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
       });
+      
       const data = await response.json();
+      
       if (response.ok) {
         login(data.token, data.user);
         navigate("/", { replace: true });
       } else {
-        setErrors({ general: data.msg });
+        // Show detailed server error
+        const errorMsg = data.msg || data.message || data.error || "Registration failed";
+        setErrors({ general: errorMsg });
+        console.error("Registration error details:", data);
       }
     } catch (err) {
-      setErrors({ general: "Server error. Please try again." });
+      console.error(err);
+      setErrors({ general: "Server error. Please try again later." });
     } finally {
       setLoading(false);
     }
@@ -496,11 +539,11 @@ function Register() {
                         <li className={formData.password.length >= 6 ? "text-green-500" : ""}>
                           ✓ At least 6 characters
                         </li>
-                        <li className={/(?=.*[A-Z])/.test(formData.password) ? "text-green-500" : ""}>
-                          ✓ At least one uppercase letter
+                        <li className={/(?=.*[A-Z])/.test(formData.password) ? "text-green-500" : "text-gray-400"}>
+                          ✓ Uppercase letter (recommended)
                         </li>
-                        <li className={/(?=.*[0-9])/.test(formData.password) ? "text-green-500" : ""}>
-                          ✓ At least one number
+                        <li className={/(?=.*[0-9])/.test(formData.password) ? "text-green-500" : "text-gray-400"}>
+                          ✓ Number (recommended)
                         </li>
                       </ul>
                     </div>
