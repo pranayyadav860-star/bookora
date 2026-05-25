@@ -35,6 +35,7 @@ import AdminRoute from "./components/AdminRoute";
 import OwnerRoute from "./components/OwnerRoute";
 import { AuthProvider } from "./context/AuthContext";
 import PaymentDetails from "./pages/PaymentDetails";
+import Offers from "./pages/Offers";
 
 
 
@@ -64,6 +65,7 @@ function App() {
             <Routes>
               {/* ========== PUBLIC ROUTES ========== */}
               <Route path="/" element={<Home />} />
+                  <Route path="/offers" element={<Offers />} /> 
               <Route path="/hotels" element={<Hotels />} />
               <Route path="/hotel/:id" element={<HotelDetails />} />
               <Route path="/login" element={<Login />} />

@@ -6,11 +6,12 @@ const auth = require("../middleware/auth");
 
 // ========== PUBLIC ROUTES ==========
 
-// Get all active coupons for customers (Public)
+// Get all active ADMIN coupons (global coupons) for customers
 router.get("/active", async (req, res) => {
   try {
     const coupons = await Coupon.find({
       isActive: true,
+      isGlobal: true,                       // 👈 Only admin-created global coupons
       validFrom: { $lte: new Date() },
       validUntil: { $gte: new Date() }
     }).limit(10);

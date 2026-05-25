@@ -125,10 +125,27 @@ if (GoogleStrategy && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_
 }
 
 // ============================================
-// OTP STORAGE
+// OTP STORAGE (temporary)
 // ============================================
 
-const otpStore = {};
+const otpStore = {}; // { phoneOrEmail: { otp, expires } }
+
+// ============================================
+// VERIFICATION TOKEN STORAGE (new)
+// Stores temporary tokens after OTP is verified.
+// Format: { token: { contact, expires } }
+// ============================================
+const verificationTokenStore = {};
+
+// Optional: Clean up expired verification tokens every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, data] of Object.entries(verificationTokenStore)) {
+    if (data.expires < now) {
+      delete verificationTokenStore[token];
+    }
+  }
+}, 5 * 60 * 1000);
 
 // ============================================
 // SEND OTP
@@ -154,7 +171,8 @@ router.post("/send-otp", async (req, res) => {
 });
 
 // ============================================
-// VERIFY OTP
+// VERIFY OTP (UPDATED)
+// Now returns a temporary verification token instead of creating a user.
 // ============================================
 
 router.post("/verify-otp", async (req, res) => {
@@ -173,29 +191,106 @@ router.post("/verify-otp", async (req, res) => {
     }
     if (savedOtp.otp !== otp) return res.status(400).json({ success: false, msg: "Invalid OTP" });
 
-    let user = await User.findOne({ phone: target });
-    if (!user) {
-      user = await User.create({
-        name: `User-${target.slice(-4)}`,
-        email: `${target}@otp.user`,
-        phone: target,
-        password: await bcrypt.hash(Math.random().toString(36), 10),
-        role: "user",
-        isPhoneVerified: true,
-      });
-    }
+    // OTP is valid. Generate a temporary verification token (random string)
+    const verificationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    // Store it with the contact (email/phone) and expiry (10 minutes)
+    verificationTokenStore[verificationToken] = {
+      contact: target,
+      expires: Date.now() + 10 * 60 * 1000,
+    };
 
+    // Clean up OTP
     delete otpStore[target];
-    const token = createToken(user);
 
     res.json({
       success: true,
-      token,
-      user: { id: user._id, name: user.name, phone: user.phone, role: user.role },
+      verificationToken, // Send to frontend
+      msg: "OTP verified successfully. Please complete registration.",
     });
   } catch (err) {
     console.error("VERIFY OTP ERROR:", err);
     res.status(500).json({ success: false, msg: "Server error" });
+  }
+});
+
+// ============================================
+// REGISTER (UPDATED)
+// Uses verificationToken to create the user with name & password.
+// ============================================
+
+router.post("/register", async (req, res) => {
+  try {
+    const { name, password, verificationToken, email, phone } = req.body;
+
+    console.log("📝 Register request:", { name, verificationToken, email, phone });
+
+    // Validate required fields
+    if (!name || !password || !verificationToken) {
+      return res.status(400).json({ success: false, msg: "Name, password and verification token are required" });
+    }
+
+    // Look up the verification token
+    const tokenData = verificationTokenStore[verificationToken];
+    if (!tokenData) {
+      return res.status(400).json({ success: false, msg: "Invalid or expired verification token. Please verify again." });
+    }
+    if (Date.now() > tokenData.expires) {
+      delete verificationTokenStore[verificationToken];
+      return res.status(400).json({ success: false, msg: "Verification token expired. Please request a new OTP." });
+    }
+
+    const contact = tokenData.contact; // this is the email or phone that was verified
+
+    // Determine if contact is email or phone
+    const isEmail = contact.includes('@');
+    const userEmail = isEmail ? contact : (email || null);
+    const userPhone = !isEmail ? contact : (phone || null);
+
+    // Check if user already exists with that email or phone
+    const existingUser = await User.findOne({
+      $or: [
+        ...(userEmail ? [{ email: userEmail.toLowerCase() }] : []),
+        ...(userPhone ? [{ phone: userPhone }] : [])
+      ]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ success: false, msg: "User already exists with this email or phone. Please login." });
+    }
+
+    // Create the user
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({
+      name,
+      email: userEmail ? userEmail.toLowerCase() : null,
+      phone: userPhone,
+      password: hashedPassword,
+      role: "user",
+      // optionally mark as verified
+      isEmailVerified: isEmail,
+      isPhoneVerified: !isEmail,
+    });
+
+    // Clean up the used verification token
+    delete verificationTokenStore[verificationToken];
+
+    // Generate final auth token
+    const authToken = createToken(user);
+
+    res.json({
+      success: true,
+      token: authToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    console.error("REGISTER ERROR:", err);
+    res.status(500).json({ success: false, msg: err.message || "Server error" });
   }
 });
 
@@ -409,55 +504,7 @@ router.post("/login", async (req, res) => {
 });
 
 // ============================================
-// REGISTER (FIXED - Saves phone number)
-// ============================================
-
-router.post("/register", async (req, res) => {
-  try {
-    const { name, email, password, phone } = req.body;
-
-    console.log("📝 Register request:", { name, email, phone });
-
-    // Check if user exists by email OR phone
-    const existingUser = await User.findOne({
-      $or: [{ email: email?.toLowerCase() }, { phone: phone }],
-    });
-
-    if (existingUser) {
-      return res.status(400).json({ success: false, msg: "User already exists with this email or phone" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await User.create({
-      name,
-      email: email?.toLowerCase(),
-      phone: phone || "",
-      password: hashedPassword,
-      role: "user",
-    });
-
-    const token = createToken(user);
-
-    res.json({
-      success: true,
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-      },
-    });
-  } catch (err) {
-    console.error("REGISTER ERROR:", err);
-    res.status(500).json({ success: false, msg: "Server error" });
-  }
-});
-
-// ============================================
-// CREATE TEST USER (For testing only)
+// CREATE TEST USER (unchanged)
 // ============================================
 
 router.post("/create-test-user", async (req, res) => {

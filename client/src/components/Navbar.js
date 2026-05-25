@@ -23,6 +23,7 @@ import {
   UserGroupIcon,
   GlobeAltIcon,
   MicrophoneIcon,
+  TagIcon,
   ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
 
@@ -104,6 +105,13 @@ function Navbar() {
             <span className="relative z-10 flex items-center gap-2">
               <BuildingOfficeIcon className="h-4 w-4" />
               Hotels
+            </span>
+            <span className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition duration-300"></span>
+          </Link>
+          <Link to="/offers" className="group relative px-4 py-2 rounded-xl text-gray-300 text-sm font-medium hover:text-yellow-400 transition-all duration-300">
+            <span className="relative z-10 flex items-center gap-2">
+              <TagIcon className="h-4 w-4" />
+              Offers
             </span>
             <span className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition duration-300"></span>
           </Link>

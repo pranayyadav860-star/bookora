@@ -1,5 +1,5 @@
 // client/src/pages/AdminUsers.js
-// UPDATED - Separate tabs for Admins and Users
+// UPDATED - Added Owners tab with full management
 
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -14,7 +14,9 @@ import {
   XMarkIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  PlusCircleIcon
+  PlusCircleIcon,
+  BuildingOfficeIcon,
+  HomeIcon
 } from '@heroicons/react/24/outline';
 
 function AdminUsers() {
@@ -25,7 +27,7 @@ function AdminUsers() {
   const [success, setSuccess] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
   const [selectedRole, setSelectedRole] = useState("");
-  const [activeTab, setActiveTab] = useState("all"); // all, admins, users
+  const [activeTab, setActiveTab] = useState("all"); // all, admins, owners, users
   const [showMakeAdminModal, setShowMakeAdminModal] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
   
@@ -168,6 +170,8 @@ function AdminUsers() {
     
     if (activeTab === "admins") {
       filtered = filtered.filter(u => u.role === "admin");
+    } else if (activeTab === "owners") {
+      filtered = filtered.filter(u => u.role === "owner");
     } else if (activeTab === "users") {
       filtered = filtered.filter(u => u.role === "user");
     }
@@ -183,12 +187,14 @@ function AdminUsers() {
   };
 
   const admins = users.filter(u => u.role === "admin");
+  const owners = users.filter(u => u.role === "owner");
   const regularUsers = users.filter(u => u.role === "user");
   const filteredUsers = getFilteredUsers();
 
   const stats = {
     total: users.length,
     admins: admins.length,
+    owners: owners.length,
     users: regularUsers.length
   };
 
@@ -213,7 +219,7 @@ function AdminUsers() {
               <Link to="/admin/dashboard" className="text-gray-500 hover:text-gray-700">← Back</Link>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Manage Users</h1>
-                <p className="text-sm text-gray-500 mt-1">View, manage and promote users</p>
+                <p className="text-sm text-gray-500 mt-1">View, manage and promote users, owners and admins</p>
               </div>
             </div>
             <button
@@ -229,8 +235,8 @@ function AdminUsers() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Stats Cards - Now 4 cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
@@ -243,10 +249,19 @@ function AdminUsers() {
           <div className="bg-purple-50 rounded-2xl p-6 shadow-sm border border-purple-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-600 text-sm">Admin Users</p>
+                <p className="text-purple-600 text-sm">Admins</p>
                 <p className="text-3xl font-bold text-purple-700">{stats.admins}</p>
               </div>
               <ShieldCheckIcon className="h-10 w-10 text-purple-500 opacity-50" />
+            </div>
+          </div>
+          <div className="bg-blue-50 rounded-2xl p-6 shadow-sm border border-blue-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-600 text-sm">Hotel Owners</p>
+                <p className="text-3xl font-bold text-blue-700">{stats.owners}</p>
+              </div>
+              <BuildingOfficeIcon className="h-10 w-10 text-blue-500 opacity-50" />
             </div>
           </div>
           <div className="bg-green-50 rounded-2xl p-6 shadow-sm border border-green-100">
@@ -276,9 +291,9 @@ function AdminUsers() {
           </div>
         )}
 
-        {/* Tabs */}
+        {/* Tabs - Now 4 tabs */}
         <div className="bg-white rounded-2xl shadow-sm mb-6">
-          <div className="flex border-b border-gray-200">
+          <div className="flex flex-wrap border-b border-gray-200">
             <button
               onClick={() => setActiveTab("all")}
               className={`px-6 py-4 font-medium transition ${
@@ -300,6 +315,16 @@ function AdminUsers() {
               👑 Admins ({stats.admins})
             </button>
             <button
+              onClick={() => setActiveTab("owners")}
+              className={`px-6 py-4 font-medium transition ${
+                activeTab === "owners"
+                  ? "text-blue-600 border-b-2 border-blue-500"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              🏨 Hotel Owners ({stats.owners})
+            </button>
+            <button
               onClick={() => setActiveTab("users")}
               className={`px-6 py-4 font-medium transition ${
                 activeTab === "users"
@@ -318,7 +343,7 @@ function AdminUsers() {
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
               type="text"
-              placeholder={`Search ${activeTab === "admins" ? "admins" : activeTab === "users" ? "users" : "users"} by name or email...`}
+              placeholder={`Search ${activeTab === "admins" ? "admins" : activeTab === "owners" ? "hotel owners" : activeTab === "users" ? "regular users" : "users"} by name or email...`}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none"
@@ -328,112 +353,128 @@ function AdminUsers() {
 
         {/* Users Table */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">User</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Email</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Role</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Joined</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.map((u) => (
-                <tr key={u._id} className={`border-b border-gray-100 hover:bg-gray-50 transition ${
-                  u.role === "admin" ? "bg-purple-50/30" : ""
-                }`}>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        u.role === "admin" ? "bg-purple-100" : "bg-yellow-100"
-                      }`}>
-                        <span className={u.role === "admin" ? "text-purple-600 font-bold" : "text-yellow-600 font-bold"}>
-                          {u.name?.charAt(0) || u.email?.charAt(0) || "U"}
-                        </span>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">User</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Email</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Role</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Hotels Owned</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Joined</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((u) => (
+                  <tr key={u._id} className={`border-b border-gray-100 hover:bg-gray-50 transition ${
+                    u.role === "admin" ? "bg-purple-50/30" : u.role === "owner" ? "bg-blue-50/30" : ""
+                  }`}>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          u.role === "admin" ? "bg-purple-100" : u.role === "owner" ? "bg-blue-100" : "bg-yellow-100"
+                        }`}>
+                          <span className={u.role === "admin" ? "text-purple-600 font-bold" : u.role === "owner" ? "text-blue-600 font-bold" : "text-yellow-600 font-bold"}>
+                            {u.name?.charAt(0) || u.email?.charAt(0) || "U"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-900">{u.name || "N/A"}</span>
+                          {u.email === user?.email && (
+                            <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">You</span>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-medium text-gray-900">{u.name || "N/A"}</span>
-                        {u.email === user?.email && (
-                          <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">You</span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">{u.email}</td>
+                    <td className="px-6 py-4">
+                      {editingRole === u._id ? (
+                        <select
+                          value={selectedRole}
+                          onChange={(e) => setSelectedRole(e.target.value)}
+                          className="border rounded-lg px-2 py-1 text-sm"
+                        >
+                          <option value="user">👤 User</option>
+                          <option value="owner">🏨 Owner</option>
+                          <option value="admin">👑 Admin</option>
+                        </select>
+                      ) : (
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          u.role === "admin" 
+                            ? "bg-purple-100 text-purple-700" 
+                            : u.role === "owner"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-green-100 text-green-700"
+                        }`}>
+                          {u.role === "admin" ? "👑 Admin" : u.role === "owner" ? "🏨 Owner" : "👤 User"}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {u.role === "owner" ? (
+                        <span className="flex items-center gap-1 text-sm text-blue-600">
+                          <HomeIcon className="h-4 w-4" />
+                          {u.hotelIds?.length || 0} hotels
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-sm">—</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-gray-500 text-sm">
+                      {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "N/A"}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
+                        {editingRole === u._id ? (
+                          <>
+                            <button
+                              onClick={() => updateUserRole(u._id, selectedRole)}
+                              className="bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingRole(null)}
+                              className="bg-gray-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-gray-600"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditingRole(u._id);
+                                setSelectedRole(u.role);
+                              }}
+                              className="text-yellow-600 hover:text-yellow-800"
+                              title="Change Role"
+                            >
+                              <ShieldCheckIcon className="h-5 w-5" />
+                            </button>
+                            <button
+                              onClick={() => deleteUser(u._id, u.email)}
+                              className="text-red-600 hover:text-red-800"
+                              title="Delete User"
+                              disabled={u.email === user?.email}
+                            >
+                              <TrashIcon className={`h-5 w-5 ${u.email === user?.email ? "opacity-50 cursor-not-allowed" : ""}`} />
+                            </button>
+                          </>
                         )}
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-gray-600">{u.email}</td>
-                  <td className="px-6 py-4">
-                    {editingRole === u._id ? (
-                      <select
-                        value={selectedRole}
-                        onChange={(e) => setSelectedRole(e.target.value)}
-                        className="border rounded-lg px-2 py-1 text-sm"
-                      >
-                        <option value="user">👤 User</option>
-                        <option value="admin">👑 Admin</option>
-                      </select>
-                    ) : (
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        u.role === "admin" 
-                          ? "bg-purple-100 text-purple-700" 
-                          : "bg-green-100 text-green-700"
-                      }`}>
-                        {u.role === "admin" ? "👑 Admin" : "👤 User"}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-gray-500 text-sm">
-                    {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "N/A"}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      {editingRole === u._id ? (
-                        <>
-                          <button
-                            onClick={() => updateUserRole(u._id, selectedRole)}
-                            className="bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => setEditingRole(null)}
-                            className="bg-gray-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-gray-600"
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => {
-                              setEditingRole(u._id);
-                              setSelectedRole(u.role);
-                            }}
-                            className="text-yellow-600 hover:text-yellow-800"
-                            title="Change Role"
-                          >
-                            <ShieldCheckIcon className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => deleteUser(u._id, u.email)}
-                            className="text-red-600 hover:text-red-800"
-                            title="Delete User"
-                            disabled={u.email === user?.email}
-                          >
-                            <TrashIcon className={`h-5 w-5 ${u.email === user?.email ? "opacity-50 cursor-not-allowed" : ""}`} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           
           {filteredUsers.length === 0 && (
             <div className="text-center py-12">
               <UserGroupIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-400">No {activeTab === "admins" ? "admins" : activeTab === "users" ? "regular users" : "users"} found</p>
+              <p className="text-gray-400">No {activeTab === "admins" ? "admins" : activeTab === "owners" ? "hotel owners" : activeTab === "users" ? "regular users" : "users"} found</p>
             </div>
           )}
         </div>

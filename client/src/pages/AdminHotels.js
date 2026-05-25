@@ -1,9 +1,10 @@
 // client/src/pages/AdminHotels.js
-// PREMIUM VERSION - Fixed Location Tab & Individual Image Carousels
+// IMPROVED UI - Modern design, animations, toast notifications, skeleton loaders, enhanced form
 
 import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import toast, { Toaster } from "react-hot-toast";
 import {
   BuildingOfficeIcon,
   PlusCircleIcon,
@@ -12,7 +13,6 @@ import {
   MagnifyingGlassIcon,
   XMarkIcon,
   PhotoIcon,
-  DocumentArrowDownIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
   StarIcon,
@@ -21,16 +21,17 @@ import {
   CurrencyRupeeIcon,
   HomeIcon,
   ShieldCheckIcon,
-  LanguageIcon,
   ClockIcon,
   SparklesIcon,
-  TvIcon,
-  TruckIcon,
   DevicePhoneMobileIcon,
-  WrenchScrewdriverIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  ArrowPathIcon,
+  EyeIcon,
+  ChartBarIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
+import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 
 function AdminHotels() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -54,7 +55,7 @@ function AdminHotels() {
     size: "",
     view: "",
     images: [],
-    amenities: []
+    amenities: [],
   };
 
   // Complete hotel form with all features
@@ -86,22 +87,24 @@ function AdminHotels() {
     checkoutUntil: "11:00 AM",
     checkinRules: [],
     childPolicies: {
-      infant: "Infant 1–1 year(s): Stay free using existing bedding. Cot may cost extra and depends on availability.",
+      infant:
+        "Infant 1–1 year(s): Stay free using existing bedding. Cot may cost extra and depends on availability.",
       children: "Children 2–8 year(s): Stay free using existing bedding.",
       adultAge: "Guests 9 years and older are considered adults.",
       extraBeds: "Extra beds depend on room chosen.",
       groupPolicy: "If booking more than 5 rooms, different policies may apply.",
-      minGuestAge: 1
+      minGuestAge: 1,
     },
     transport: [],
     nearbyPlaces: [],
     cancellationPolicy: "Free cancellation up to 7 days before check-in",
     paymentMethods: ["Cash", "Card", "UPI"],
-    taxInfo: "Changes in tax structure due to government policies may revise taxes and will be charged additionally during checkout.",
+    taxInfo:
+      "Changes in tax structure due to government policies may revise taxes and will be charged additionally during checkout.",
     contactEmail: "",
     contactPhone: "",
     website: "",
-    mapLocation: { lat: "", lng: "" }
+    mapLocation: { lat: "", lng: "" },
   };
 
   const [form, setForm] = useState(emptyForm);
@@ -114,18 +117,19 @@ function AdminHotels() {
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
   const [viewMode, setViewMode] = useState("grid");
-  // Store individual carousel index for each hotel
   const [carouselIndices, setCarouselIndices] = useState({});
   const [imageCarouselOpen, setImageCarouselOpen] = useState(false);
   const [carouselImages, setCarouselImages] = useState([]);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   const loadHotels = useCallback(async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem("token");
       if (!token) return;
       const res = await fetch("http://localhost:5000/api/hotels", {
-        headers: { "Authorization": `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 401) {
         logout();
@@ -136,7 +140,9 @@ function AdminHotels() {
       setHotels(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error loading hotels:", err);
-      setError("Failed to load hotels");
+      toast.error("Failed to load hotels");
+    } finally {
+      setLoading(false);
     }
   }, [logout, navigate]);
 
@@ -149,12 +155,12 @@ function AdminHotels() {
   // Handle carousel for individual hotel card
   const handlePrevImage = (hotelId, images, currentIndex) => {
     const newIndex = (currentIndex - 1 + images.length) % images.length;
-    setCarouselIndices(prev => ({ ...prev, [hotelId]: newIndex }));
+    setCarouselIndices((prev) => ({ ...prev, [hotelId]: newIndex }));
   };
 
   const handleNextImage = (hotelId, images, currentIndex) => {
     const newIndex = (currentIndex + 1) % images.length;
-    setCarouselIndices(prev => ({ ...prev, [hotelId]: newIndex }));
+    setCarouselIndices((prev) => ({ ...prev, [hotelId]: newIndex }));
   };
 
   const compressImage = (file) =>
@@ -191,9 +197,9 @@ function AdminHotels() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ imageUrl })
+        body: JSON.stringify({ imageUrl }),
       });
     } catch (err) {
       console.error("Error deleting image:", err);
@@ -207,7 +213,7 @@ function AdminHotels() {
     }
     setForm({
       ...form,
-      images: form.images.filter((_, idx) => idx !== indexToRemove)
+      images: form.images.filter((_, idx) => idx !== indexToRemove),
     });
   };
 
@@ -217,7 +223,9 @@ function AdminHotels() {
       await deleteImageFromCloudinary(imageToDelete);
     }
     const updated = [...form.roomTypes];
-    updated[roomIndex].images = updated[roomIndex].images.filter((_, idx) => idx !== imageIndex);
+    updated[roomIndex].images = updated[roomIndex].images.filter(
+      (_, idx) => idx !== imageIndex
+    );
     setForm({ ...form, roomTypes: updated });
   };
 
@@ -232,48 +240,48 @@ function AdminHotels() {
     const token = localStorage.getItem("token");
     const res = await fetch("http://localhost:5000/api/hotels/upload", {
       method: "POST",
-      headers: { "Authorization": `Bearer ${token}` },
-      body: fd
+      headers: { Authorization: `Bearer ${token}` },
+      body: fd,
     });
     const data = await res.json();
     setForm({ ...form, images: [...form.images, ...data] });
     setUploading(false);
+    toast.success("Images uploaded successfully!");
   };
 
   const uploadRoomImages = async (e, index) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-    
+
     const fd = new FormData();
     setUploading(true);
-    
+
     for (const file of files) {
       const small = await compressImage(file);
       fd.append("images", small);
     }
-    
+
     try {
       const token = localStorage.getItem("token");
       const res = await fetch("http://localhost:5000/api/hotels/upload-room", {
         method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
-        body: fd
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
       });
-      
+
       const data = await res.json();
-      
+
       if (res.ok) {
         const updated = [...form.roomTypes];
         updated[index].images = [...(updated[index].images || []), ...data];
         setForm({ ...form, roomTypes: updated });
-        setSuccess("Room images uploaded successfully!");
-        setTimeout(() => setSuccess(null), 3000);
+        toast.success("Room images uploaded successfully!");
       } else {
-        setError("Failed to upload room images");
+        toast.error("Failed to upload room images");
       }
     } catch (err) {
       console.error("Upload error:", err);
-      setError("Error uploading images");
+      toast.error("Error uploading images");
     } finally {
       setUploading(false);
     }
@@ -306,14 +314,14 @@ function AdminHotels() {
   const removeRoom = (index) => {
     setForm({
       ...form,
-      roomTypes: form.roomTypes.filter((_, i) => i !== index)
+      roomTypes: form.roomTypes.filter((_, i) => i !== index),
     });
   };
 
   const toggleArrayItem = (field, value) => {
     const arr = form[field] || [];
     if (arr.includes(value)) {
-      setForm({ ...form, [field]: arr.filter(x => x !== value) });
+      setForm({ ...form, [field]: arr.filter((x) => x !== value) });
     } else {
       setForm({ ...form, [field]: [...arr, value] });
     }
@@ -321,42 +329,44 @@ function AdminHotels() {
 
   const saveHotel = async () => {
     if (!form.hotelName.trim()) {
-      setError("Hotel name is required");
+      toast.error("Hotel name is required");
       return;
     }
     if (!form.city.trim()) {
-      setError("City is required");
+      toast.error("City is required");
       return;
     }
     if (!form.price) {
-      setError("Price is required");
+      toast.error("Price is required");
       return;
     }
 
-    setError(null);
     const url = editId
       ? `http://localhost:5000/api/hotels/update/${editId}`
       : "http://localhost:5000/api/hotels/add";
     const method = editId ? "PUT" : "POST";
 
     const token = localStorage.getItem("token");
-    const res = await fetch(url, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify(form)
-    });
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(form),
+      });
 
-    if (res.ok) {
-      setSuccess(editId ? "Hotel updated successfully! ✅" : "Hotel added successfully! ✅");
-      resetForm();
-      loadHotels();
-      setShowForm(false);
-      setTimeout(() => setSuccess(null), 3000);
-    } else {
-      setError("Failed to save hotel");
+      if (res.ok) {
+        toast.success(editId ? "Hotel updated successfully! ✅" : "Hotel added successfully! ✅");
+        resetForm();
+        loadHotels();
+        setShowForm(false);
+      } else {
+        toast.error("Failed to save hotel");
+      }
+    } catch (err) {
+      toast.error("Error saving hotel");
     }
   };
 
@@ -364,19 +374,27 @@ function AdminHotels() {
     setEditId(hotel._id);
     setForm(hotel);
     setShowForm(true);
+    setActiveTab("basic");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const deleteHotel = async (id) => {
     if (!window.confirm("Delete this hotel? This cannot be undone!")) return;
     const token = localStorage.getItem("token");
-    await fetch(`http://localhost:5000/api/hotels/delete/${id}`, {
-      method: "DELETE",
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-    loadHotels();
-    setSuccess("Hotel deleted successfully!");
-    setTimeout(() => setSuccess(null), 3000);
+    try {
+      const res = await fetch(`http://localhost:5000/api/hotels/delete/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        toast.success("Hotel deleted successfully!");
+        loadHotels();
+      } else {
+        toast.error("Failed to delete hotel");
+      }
+    } catch (err) {
+      toast.error("Error deleting hotel");
+    }
   };
 
   const resetForm = () => {
@@ -387,55 +405,116 @@ function AdminHotels() {
     setActiveTab("basic");
   };
 
+  // Options for checkboxes
   const highlightOptions = [
-    "✨ Prime Location in City Center", "🛏️ Spacious & Comfortable Rooms", "📶 Free High-Speed Wi-Fi",
-    "🚗 Free Parking Facility", "🕒 24/7 Front Desk Support", "🧹 Daily Housekeeping Service",
-    "❄️ Air Conditioned Rooms", "📺 Smart TV / Entertainment Access", "🍽️ In-House Restaurant / Room Service",
-    "🔒 Safe & Secure Environment", "👨‍👩‍👧‍👦 Family Friendly Stay", "💼 Ideal for Business Travelers",
-    "💑 Perfect for Couples & Vacations", "🚉 Easy Access to Transport Hubs", "🌟 Affordable Luxury Experience"
+    "✨ Prime Location in City Center",
+    "🛏️ Spacious & Comfortable Rooms",
+    "📶 Free High-Speed Wi-Fi",
+    "🚗 Free Parking Facility",
+    "🕒 24/7 Front Desk Support",
+    "🧹 Daily Housekeeping Service",
+    "❄️ Air Conditioned Rooms",
+    "📺 Smart TV / Entertainment Access",
+    "🍽️ In-House Restaurant / Room Service",
+    "🔒 Safe & Secure Environment",
+    "👨‍👩‍👧‍👦 Family Friendly Stay",
+    "💼 Ideal for Business Travelers",
+    "💑 Perfect for Couples & Vacations",
+    "🚉 Easy Access to Transport Hubs",
+    "🌟 Affordable Luxury Experience",
   ];
 
   const popularFacilitiesOptions = [
-    "Free WiFi", "Outdoor Pool", "Indoor Pool", "Spa", "Fitness Center", "Restaurant",
-    "Bar", "Parking", "Airport Shuttle", "Business Center", "Meeting Rooms"
+    "Free WiFi",
+    "Outdoor Pool",
+    "Indoor Pool",
+    "Spa",
+    "Fitness Center",
+    "Restaurant",
+    "Bar",
+    "Parking",
+    "Airport Shuttle",
+    "Business Center",
+    "Meeting Rooms",
   ];
 
   const roomFeaturesOptions = [
-    "Air Conditioning", "Flat-screen TV", "Mini Bar", "In-room Safe", "Work Desk",
-    "Balcony", "City View", "Private Bathroom", "Hair Dryer", "Free Toiletries"
+    "Air Conditioning",
+    "Flat-screen TV",
+    "Mini Bar",
+    "In-room Safe",
+    "Work Desk",
+    "Balcony",
+    "City View",
+    "Private Bathroom",
+    "Hair Dryer",
+    "Free Toiletries",
   ];
 
   const servicesOptions = [
-    "24-hour Front Desk", "Express Check-in/out", "Luggage Storage", "Concierge Service",
-    "Daily Housekeeping", "Laundry Service", "Currency Exchange"
+    "24-hour Front Desk",
+    "Express Check-in/out",
+    "Luggage Storage",
+    "Concierge Service",
+    "Daily Housekeeping",
+    "Laundry Service",
+    "Currency Exchange",
   ];
 
   const transportOptions = [
-    "Airport Shuttle", "Car Rental", "Free Parking", "Taxi Service", "Bicycle Rental"
+    "Airport Shuttle",
+    "Car Rental",
+    "Free Parking",
+    "Taxi Service",
+    "Bicycle Rental",
   ];
 
   const roomAmenitiesOptions = [
-    "Desk", "Sitting Area", "Wardrobe", "Socket Near Bed", "Smoke Alarm", "First Aid Kit"
+    "Desk",
+    "Sitting Area",
+    "Wardrobe",
+    "Socket Near Bed",
+    "Smoke Alarm",
+    "First Aid Kit",
   ];
 
   const languagesOptions = ["English", "Hindi", "Telugu", "Tamil", "Malayalam", "Kannada"];
   const checkinRulesOptions = ["Check-in 12:00 PM", "Check-out 11:00 AM", "No Smoking", "ID Required"];
-  const nearbyAttractionsOptions = ["Beaches", "Historical Places", "Shopping Malls", "Restaurants", "Parks", "Temples"];
+  const nearbyAttractionsOptions = [
+    "Beaches",
+    "Historical Places",
+    "Shopping Malls",
+    "Restaurants",
+    "Parks",
+    "Temples",
+  ];
   const categories = ["Luxury", "Budget", "Business", "Resort", "Boutique", "Family"];
 
   const filtered = hotels.filter((h) =>
     `${h.hotelName} ${h.city}`.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Stats
+  const totalHotels = hotels.length;
+  const totalRooms = hotels.reduce((sum, h) => sum + (h.roomTypes?.length || 0), 0);
+  const avgPrice =
+    hotels.length > 0
+      ? Math.round(hotels.reduce((sum, h) => sum + (Number(h.price) || 0), 0) / hotels.length)
+      : 0;
+  const totalCities = [...new Set(hotels.map((h) => h.city).filter(Boolean))].length;
+
   const renderCheckboxGroup = (title, field, options, icon = null, columns = "md:grid-cols-3") => (
-    <div className="border rounded-2xl p-6 bg-gradient-to-br from-gray-50 to-white">
-      <label className="font-bold text-gray-800 mb-4 block flex items-center gap-2">
-        {icon && <span className="text-yellow-500">{icon}</span>}
+    <div className="border rounded-2xl p-6 bg-gradient-to-br from-gray-50 to-white shadow-sm transition-all hover:shadow-md">
+      <label className="font-bold text-gray-800 mb-4 block flex items-center gap-2 text-lg">
+        {icon && <span className="text-yellow-500 text-xl">{icon}</span>}
         {title}
       </label>
-      <div className={`grid grid-cols-1 ${columns} gap-3 max-h-60 overflow-y-auto p-2`}>
+      <div className={`grid grid-cols-1 ${columns} gap-3 max-h-64 overflow-y-auto p-2`}>
         {options.map((item, idx) => (
-          <label key={idx} className="flex items-center gap-2 cursor-pointer hover:bg-yellow-50 p-2 rounded-lg transition">
+          <label
+            key={idx}
+            className="flex items-center gap-2 cursor-pointer hover:bg-yellow-50 p-2 rounded-lg transition-all duration-200"
+          >
             <input
               type="checkbox"
               checked={form[field]?.includes(item)}
@@ -447,6 +526,22 @@ function AdminHotels() {
         ))}
       </div>
       <p className="text-xs text-gray-400 mt-3">Select all that apply</p>
+    </div>
+  );
+
+  // Skeleton loader for hotel cards
+  const SkeletonCard = () => (
+    <div className="animate-pulse bg-white rounded-2xl shadow-lg overflow-hidden">
+      <div className="h-64 bg-gray-200"></div>
+      <div className="p-5 space-y-3">
+        <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+        <div className="flex gap-3">
+          <div className="h-10 bg-gray-200 rounded-xl flex-1"></div>
+          <div className="h-10 bg-gray-200 rounded-xl flex-1"></div>
+        </div>
+      </div>
     </div>
   );
 
@@ -471,18 +566,23 @@ function AdminHotels() {
     { id: "facilities", name: "Facilities", icon: WifiIcon },
     { id: "services", name: "Services", icon: DevicePhoneMobileIcon },
     { id: "policies", name: "Policies", icon: ShieldCheckIcon },
-    { id: "media", name: "Media", icon: PhotoIcon }
+    { id: "media", name: "Media", icon: PhotoIcon },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+      <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+
       {/* Premium Header */}
-      <div className="bg-gradient-to-r from-gray-900 to-gray-800 text-white sticky top-0 z-40 shadow-xl">
+      <div className="bg-gradient-to-r from-gray-900 to-gray-800 text-white sticky top-0 z-40 shadow-xl backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
-              <Link to="/admin/dashboard" className="text-gray-300 hover:text-yellow-400 transition flex items-center gap-2">
-                ← Back 
+              <Link
+                to="/admin/dashboard"
+                className="text-gray-300 hover:text-yellow-400 transition flex items-center gap-2"
+              >
+                ← Back
               </Link>
               <div className="h-8 w-px bg-gray-700"></div>
               <div>
@@ -493,7 +593,10 @@ function AdminHotels() {
               </div>
             </div>
             <button
-              onClick={() => { resetForm(); setShowForm(true); }}
+              onClick={() => {
+                resetForm();
+                setShowForm(true);
+              }}
               className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black rounded-xl font-semibold hover:shadow-lg hover:shadow-yellow-500/25 transition-all duration-300 transform hover:scale-105"
             >
               <PlusCircleIcon className="h-5 w-5" />
@@ -504,22 +607,55 @@ function AdminHotels() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && (
-          <div className="mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r-xl flex items-center gap-3 shadow-sm">
-            <ExclamationTriangleIcon className="h-5 w-5" />
-            {error}
-            <button onClick={() => setError(null)} className="ml-auto"><XMarkIcon className="h-5 w-5" /></button>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-10">
+          <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-5 shadow-md border border-gray-100 transition-all hover:shadow-lg hover:-translate-y-0.5">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-gray-500 text-sm font-medium">Total Hotels</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{totalHotels}</p>
+              </div>
+              <div className="bg-yellow-100 p-3 rounded-xl">
+                <BuildingOfficeIcon className="h-6 w-6 text-yellow-600" />
+              </div>
+            </div>
           </div>
-        )}
-        {success && (
-          <div className="mb-6 bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded-r-xl flex items-center gap-3 shadow-sm">
-            <CheckCircleIcon className="h-5 w-5" />
-            {success}
-            <button onClick={() => setSuccess(null)} className="ml-auto"><XMarkIcon className="h-5 w-5" /></button>
+          <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-5 shadow-md border border-gray-100 transition-all hover:shadow-lg hover:-translate-y-0.5">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-gray-500 text-sm font-medium">Total Rooms</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{totalRooms}</p>
+              </div>
+              <div className="bg-blue-100 p-3 rounded-xl">
+                <HomeIcon className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
           </div>
-        )}
+          <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-5 shadow-md border border-gray-100 transition-all hover:shadow-lg hover:-translate-y-0.5">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-gray-500 text-sm font-medium">Avg. Price</p>
+                <p className="text-3xl font-bold text-yellow-600 mt-1">₹{avgPrice.toLocaleString()}</p>
+              </div>
+              <div className="bg-green-100 p-3 rounded-xl">
+                <CurrencyRupeeIcon className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-5 shadow-md border border-gray-100 transition-all hover:shadow-lg hover:-translate-y-0.5">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-gray-500 text-sm font-medium">Total Cities</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{totalCities}</p>
+              </div>
+              <div className="bg-purple-100 p-3 rounded-xl">
+                <MapPinIcon className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
+          </div>
+        </div>
 
-        {/* Premium Search Bar */}
+        {/* Search Bar */}
         <div className="bg-white rounded-2xl shadow-lg p-5 mb-8 border border-gray-100">
           <div className="relative">
             <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -532,127 +668,140 @@ function AdminHotels() {
           </div>
         </div>
 
-        {/* Premium Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-5 shadow-md border border-gray-100">
-            <p className="text-gray-500 text-sm">Total Hotels</p>
-            <p className="text-3xl font-bold text-gray-900">{hotels.length}</p>
+        {/* Hotel Grid */}
+        {loading ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
           </div>
-          <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-5 shadow-md border border-gray-100">
-            <p className="text-gray-500 text-sm">Total Rooms</p>
-            <p className="text-3xl font-bold text-gray-900">{hotels.reduce((sum, h) => sum + (h.roomTypes?.length || 0), 0)}</p>
-          </div>
-          <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-5 shadow-md border border-gray-100">
-            <p className="text-gray-500 text-sm">Avg. Price</p>
-            <p className="text-3xl font-bold text-yellow-600">₹{Math.round(hotels.reduce((sum, h) => sum + (Number(h.price) || 0), 0) / (hotels.length || 1)).toLocaleString()}</p>
-          </div>
-          <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-5 shadow-md border border-gray-100">
-            <p className="text-gray-500 text-sm">Total Cities</p>
-            <p className="text-3xl font-bold text-gray-900">{[...new Set(hotels.map(h => h.city).filter(Boolean))].length}</p>
-          </div>
-        </div>
-
-        {/* Hotel Cards Grid with Individual Image Carousels */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map((hotel) => {
-            const currentImageIndex = carouselIndices[hotel._id] || 0;
-            return (
-              <div key={hotel._id} className="group bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1">
-                {/* Image Carousel */}
-                <div className="relative h-64 overflow-hidden bg-gray-900">
-                  {hotel.images && hotel.images.length > 0 ? (
-                    <>
-                      <img
-                        src={hotel.images[currentImageIndex]}
-                        alt={hotel.hotelName}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                      />
-                      {hotel.images.length > 1 && (
-                        <>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handlePrevImage(hotel._id, hotel.images, currentImageIndex);
-                            }}
-                            className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full transition"
-                          >
-                            <ChevronLeftIcon className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleNextImage(hotel._id, hotel.images, currentImageIndex);
-                            }}
-                            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full transition"
-                          >
-                            <ChevronRightIcon className="h-4 w-4" />
-                          </button>
-                          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
-                            {hotel.images.map((_, idx) => (
-                              <button
-                                key={idx}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setCarouselIndices(prev => ({ ...prev, [hotel._id]: idx }));
-                                }}
-                                className={`w-1.5 h-1.5 rounded-full transition ${
-                                  currentImageIndex === idx ? "bg-yellow-500 w-3" : "bg-white/50"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </>
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
-                      <BuildingOfficeIcon className="h-12 w-12 text-gray-500" />
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map((hotel) => {
+              const currentImageIndex = carouselIndices[hotel._id] || 0;
+              return (
+                <div
+                  key={hotel._id}
+                  className="group bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2"
+                >
+                  {/* Image Carousel */}
+                  <div className="relative h-64 overflow-hidden bg-gray-900">
+                    {hotel.images && hotel.images.length > 0 ? (
+                      <>
+                        <img
+                          src={hotel.images[currentImageIndex]}
+                          alt={hotel.hotelName}
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        />
+                        {hotel.images.length > 1 && (
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handlePrevImage(hotel._id, hotel.images, currentImageIndex);
+                              }}
+                              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full transition opacity-0 group-hover:opacity-100"
+                            >
+                              <ChevronLeftIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleNextImage(hotel._id, hotel.images, currentImageIndex);
+                              }}
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full transition opacity-0 group-hover:opacity-100"
+                            >
+                              <ChevronRightIcon className="h-4 w-4" />
+                            </button>
+                            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
+                              {hotel.images.map((_, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setCarouselIndices((prev) => ({ ...prev, [hotel._id]: idx }));
+                                  }}
+                                  className={`w-1.5 h-1.5 rounded-full transition ${
+                                    currentImageIndex === idx ? "bg-yellow-500 w-3" : "bg-white/50"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
+                        <BuildingOfficeIcon className="h-12 w-12 text-gray-500" />
+                      </div>
+                    )}
+                    <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded-lg text-sm font-semibold flex items-center gap-1">
+                      <StarSolid className="h-3 w-3 text-yellow-400" />
+                      {hotel.rating || 4}
                     </div>
-                  )}
-                  <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded-lg text-sm font-semibold flex items-center gap-1">
-                    <StarIcon className="h-3 w-3 text-yellow-400" />
-                    {hotel.rating || 4}
+                  </div>
+
+                  <div className="p-5">
+                    <h3 className="text-xl font-bold text-gray-900 mb-1 line-clamp-1">
+                      {hotel.hotelName}
+                    </h3>
+                    <p className="text-gray-500 text-sm mb-2 flex items-center gap-1">
+                      <MapPinIcon className="h-4 w-4" />
+                      {hotel.city}
+                    </p>
+                    <p className="text-yellow-600 font-bold text-2xl mb-4">
+                      ₹{hotel.price}
+                      <span className="text-sm text-gray-400">/night</span>
+                    </p>
+                    {hotel.highlights && hotel.highlights.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-4">
+                        {hotel.highlights.slice(0, 2).map((h, i) => (
+                          <span
+                            key={i}
+                            className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full"
+                          >
+                            {h.substring(0, 20)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => editHotel(hotel)}
+                        className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2.5 rounded-xl font-medium hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => deleteHotel(hotel._id)}
+                        className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-2.5 rounded-xl font-medium hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
-                
-                <div className="p-5">
-                  <h3 className="text-xl font-bold text-gray-900 mb-1 line-clamp-1">{hotel.hotelName}</h3>
-                  <p className="text-gray-500 text-sm mb-2 flex items-center gap-1">
-                    <MapPinIcon className="h-4 w-4" />
-                    {hotel.city}
-                  </p>
-                  <p className="text-yellow-600 font-bold text-2xl mb-4">₹{hotel.price}<span className="text-sm text-gray-400">/night</span></p>
-                  {hotel.highlights && hotel.highlights.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-4">
-                      {hotel.highlights.slice(0, 2).map((h, i) => (
-                        <span key={i} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">{h.substring(0, 20)}</span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex gap-3">
-                    <button onClick={() => editHotel(hotel)} className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2.5 rounded-xl font-medium hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
-                      <PencilIcon className="h-4 w-4" />
-                      Edit
-                    </button>
-                    <button onClick={() => deleteHotel(hotel._id)} className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-2.5 rounded-xl font-medium hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
-                      <TrashIcon className="h-4 w-4" />
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
-        {filtered.length === 0 && (
+        {!loading && filtered.length === 0 && (
           <div className="text-center py-20 bg-white rounded-2xl shadow-sm">
             <BuildingOfficeIcon className="h-20 w-20 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500 text-xl">No hotels found</p>
-            <button onClick={() => { resetForm(); setShowForm(true); }} className="mt-6 text-yellow-600 font-semibold hover:underline flex items-center gap-2 mx-auto">
+            <button
+              onClick={() => {
+                resetForm();
+                setShowForm(true);
+              }}
+              className="mt-6 text-yellow-600 font-semibold hover:underline flex items-center gap-2 mx-auto"
+            >
               <PlusCircleIcon className="h-5 w-5" />
               Add your first hotel
             </button>
@@ -660,27 +809,30 @@ function AdminHotels() {
         )}
       </div>
 
-      {/* Add/Edit Form Modal */}
+      {/* Add/Edit Form Modal - Improved */}
       {showForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 overflow-y-auto">
           <div className="min-h-screen flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex justify-between items-center">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-100">
+              <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex justify-between items-center z-10">
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent">
                   {editId ? "Edit Hotel" : "Create New Hotel"}
                 </h2>
-                <button onClick={resetForm} className="p-2 hover:bg-gray-100 rounded-full transition">
+                <button
+                  onClick={resetForm}
+                  className="p-2 hover:bg-gray-100 rounded-full transition"
+                >
                   <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
 
               <div className="border-b border-gray-200 px-6 overflow-x-auto">
                 <div className="flex gap-2">
-                  {tabs.map(tab => (
+                  {tabs.map((tab) => (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center gap-2 px-4 py-3 font-medium transition whitespace-nowrap ${
+                      className={`flex items-center gap-2 px-4 py-3 font-medium transition-all whitespace-nowrap ${
                         activeTab === tab.id
                           ? "border-b-2 border-yellow-500 text-yellow-600"
                           : "text-gray-500 hover:text-gray-700"
@@ -698,93 +850,317 @@ function AdminHotels() {
                 {activeTab === "basic" && (
                   <div className="space-y-6">
                     <div className="grid md:grid-cols-2 gap-4">
-                      <input placeholder="Hotel Name *" value={form.hotelName} onChange={(e) => setForm({ ...form, hotelName: e.target.value })} className="border border-gray-300 p-3 rounded-xl focus:ring-2 focus:ring-yellow-500" />
-                      <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="border border-gray-300 p-3 rounded-xl">
-                        <option value="">Select Category</option>
-                        {categories.map(cat => <option key={cat}>{cat}</option>)}
-                      </select>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Hotel Name *
+                        </label>
+                        <input
+                          placeholder="e.g., Taj Mahal Palace"
+                          value={form.hotelName}
+                          onChange={(e) => setForm({ ...form, hotelName: e.target.value })}
+                          className="w-full border border-gray-300 p-3 rounded-xl focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Category
+                        </label>
+                        <select
+                          value={form.category}
+                          onChange={(e) => setForm({ ...form, category: e.target.value })}
+                          className="w-full border border-gray-300 p-3 rounded-xl focus:ring-2 focus:ring-yellow-500"
+                        >
+                          <option value="">Select Category</option>
+                          {categories.map((cat) => (
+                            <option key={cat}>{cat}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                     <div className="grid md:grid-cols-3 gap-4">
-                      <input placeholder="City *" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="border border-gray-300 p-3 rounded-xl" />
-                      <input placeholder="Price per night *" type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="border border-gray-300 p-3 rounded-xl" />
-                      <select value={form.rating} onChange={(e) => setForm({ ...form, rating: parseInt(e.target.value) })} className="border border-gray-300 p-3 rounded-xl">
-                        {[1,2,3,4,5].map(r => <option key={r}>{r} Star{r !== 1 ? 's' : ''}</option>)}
-                      </select>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                        <input
+                          placeholder="City"
+                          value={form.city}
+                          onChange={(e) => setForm({ ...form, city: e.target.value })}
+                          className="w-full border border-gray-300 p-3 rounded-xl"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Price per night *
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="Price"
+                          value={form.price}
+                          onChange={(e) => setForm({ ...form, price: e.target.value })}
+                          className="w-full border border-gray-300 p-3 rounded-xl"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Rating</label>
+                        <select
+                          value={form.rating}
+                          onChange={(e) => setForm({ ...form, rating: parseInt(e.target.value) })}
+                          className="w-full border border-gray-300 p-3 rounded-xl"
+                        >
+                          {[1, 2, 3, 4, 5].map((r) => (
+                            <option key={r}>
+                              {r} Star{r !== 1 ? "s" : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                    <textarea placeholder="Full Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="w-full border border-gray-300 p-3 rounded-xl" rows="2" />
-                    <textarea placeholder="Hotel Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full border border-gray-300 p-3 rounded-xl" rows="4" />
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <input placeholder="Contact Email" type="email" value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} className="border border-gray-300 p-3 rounded-xl" />
-                      <input placeholder="Contact Phone" value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} className="border border-gray-300 p-3 rounded-xl" />
-                    </div>
-                  </div>
-                )}
-
-                {/* TAB 2: LOCATION & MAP - ADDED BACK */}
-                {activeTab === "location" && (
-                  <div className="space-y-6">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <input placeholder="Distance to City Center (meters)" value={form.distanceToCity} onChange={(e) => setForm({ ...form, distanceToCity: e.target.value })} className="border border-gray-300 p-3 rounded-xl" />
-                      <input placeholder="Distance to Main Attraction (meters)" value={form.distanceToPalace} onChange={(e) => setForm({ ...form, distanceToPalace: e.target.value })} className="border border-gray-300 p-3 rounded-xl" />
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <input placeholder="Distance to Airport (km)" value={form.distanceToAirport} onChange={(e) => setForm({ ...form, distanceToAirport: e.target.value })} className="border border-gray-300 p-3 rounded-xl" />
-                      <input placeholder="Distance to Railway/Bus Station (km)" value={form.distanceToBusStand} onChange={(e) => setForm({ ...form, distanceToBusStand: e.target.value })} className="border border-gray-300 p-3 rounded-xl" />
-                    </div>
-                    {renderCheckboxGroup("Nearby Attractions", "nearbyAttractions", nearbyAttractionsOptions, "📍", "md:grid-cols-2")}
-                    <div className="border rounded-2xl p-6">
-                      <label className="font-bold text-gray-700 mb-3 block flex items-center gap-2">
-                        <MapPinIcon className="h-5 w-5 text-yellow-500" />
-                        Google Maps Location
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Full Address
                       </label>
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <input placeholder="Latitude" value={form.mapLocation.lat} onChange={(e) => setForm({ ...form, mapLocation: { ...form.mapLocation, lat: e.target.value } })} className="border p-3 rounded-xl" />
-                        <input placeholder="Longitude" value={form.mapLocation.lng} onChange={(e) => setForm({ ...form, mapLocation: { ...form.mapLocation, lng: e.target.value } })} className="border p-3 rounded-xl" />
+                      <textarea
+                        placeholder="Full Address"
+                        value={form.address}
+                        onChange={(e) => setForm({ ...form, address: e.target.value })}
+                        className="w-full border border-gray-300 p-3 rounded-xl"
+                        rows="2"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Hotel Description
+                      </label>
+                      <textarea
+                        placeholder="Describe your hotel"
+                        value={form.description}
+                        onChange={(e) => setForm({ ...form, description: e.target.value })}
+                        className="w-full border border-gray-300 p-3 rounded-xl"
+                        rows="4"
+                      />
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Contact Email
+                        </label>
+                        <input
+                          type="email"
+                          placeholder="contact@hotel.com"
+                          value={form.contactEmail}
+                          onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
+                          className="w-full border border-gray-300 p-3 rounded-xl"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Contact Phone
+                        </label>
+                        <input
+                          placeholder="+91 1234567890"
+                          value={form.contactPhone}
+                          onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
+                          className="w-full border border-gray-300 p-3 rounded-xl"
+                        />
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* TAB 3: ROOMS */}
+                {/* TAB 2: LOCATION & MAP */}
+                {activeTab === "location" && (
+                  <div className="space-y-6">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Distance to City Center (meters)
+                        </label>
+                        <input
+                          placeholder="e.g., 500"
+                          value={form.distanceToCity}
+                          onChange={(e) => setForm({ ...form, distanceToCity: e.target.value })}
+                          className="border border-gray-300 p-3 rounded-xl w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Distance to Main Attraction (meters)
+                        </label>
+                        <input
+                          placeholder="e.g., 200"
+                          value={form.distanceToPalace}
+                          onChange={(e) => setForm({ ...form, distanceToPalace: e.target.value })}
+                          className="border border-gray-300 p-3 rounded-xl w-full"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Distance to Airport (km)
+                        </label>
+                        <input
+                          placeholder="e.g., 15"
+                          value={form.distanceToAirport}
+                          onChange={(e) => setForm({ ...form, distanceToAirport: e.target.value })}
+                          className="border border-gray-300 p-3 rounded-xl w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Distance to Railway/Bus Station (km)
+                        </label>
+                        <input
+                          placeholder="e.g., 2"
+                          value={form.distanceToBusStand}
+                          onChange={(e) => setForm({ ...form, distanceToBusStand: e.target.value })}
+                          className="border border-gray-300 p-3 rounded-xl w-full"
+                        />
+                      </div>
+                    </div>
+                    {renderCheckboxGroup("Nearby Attractions", "nearbyAttractions", nearbyAttractionsOptions, "📍", "md:grid-cols-2")}
+                    <div className="border rounded-2xl p-6 bg-gray-50">
+                      <label className="font-bold text-gray-700 mb-3 block flex items-center gap-2">
+                        <MapPinIcon className="h-5 w-5 text-yellow-500" />
+                        Google Maps Location
+                      </label>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <input
+                          placeholder="Latitude"
+                          value={form.mapLocation.lat}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              mapLocation: { ...form.mapLocation, lat: e.target.value },
+                            })
+                          }
+                          className="border p-3 rounded-xl"
+                        />
+                        <input
+                          placeholder="Longitude"
+                          value={form.mapLocation.lng}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              mapLocation: { ...form.mapLocation, lng: e.target.value },
+                            })
+                          }
+                          className="border p-3 rounded-xl"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 3: ROOMS - Improved layout */}
                 {activeTab === "rooms" && (
                   <div className="space-y-6">
                     {form.roomTypes.map((room, index) => (
-                      <div key={index} className="border rounded-2xl p-6 bg-gradient-to-br from-gray-50 to-white">
+                      <div
+                        key={index}
+                        className="border rounded-2xl p-6 bg-gradient-to-br from-gray-50 to-white shadow-sm"
+                      >
                         <div className="flex justify-between items-center mb-4">
                           <h3 className="font-bold text-lg flex items-center gap-2">
                             <HomeIcon className="h-5 w-5 text-yellow-500" />
                             Room {index + 1}
                           </h3>
-                          {index > 0 && <button onClick={() => removeRoom(index)} className="text-red-500 text-sm hover:underline">Remove</button>}
+                          {index > 0 && (
+                            <button
+                              onClick={() => removeRoom(index)}
+                              className="text-red-500 text-sm hover:underline"
+                            >
+                              Remove
+                            </button>
+                          )}
                         </div>
                         <div className="grid md:grid-cols-3 gap-3 mb-3">
-                          <input placeholder="Room Name" value={room.name} onChange={(e) => roomChange(index, "name", e.target.value)} className="border p-3 rounded-xl" />
-                          <input placeholder="Price" type="number" value={room.price} onChange={(e) => roomChange(index, "price", e.target.value)} className="border p-3 rounded-xl" />
-                          <input placeholder="Room Size (sq ft)" value={room.size} onChange={(e) => roomChange(index, "size", e.target.value)} className="border p-3 rounded-xl" />
+                          <input
+                            placeholder="Room Name"
+                            value={room.name}
+                            onChange={(e) => roomChange(index, "name", e.target.value)}
+                            className="border p-3 rounded-xl"
+                          />
+                          <input
+                            placeholder="Price"
+                            type="number"
+                            value={room.price}
+                            onChange={(e) => roomChange(index, "price", e.target.value)}
+                            className="border p-3 rounded-xl"
+                          />
+                          <input
+                            placeholder="Room Size (sq ft)"
+                            value={room.size}
+                            onChange={(e) => roomChange(index, "size", e.target.value)}
+                            className="border p-3 rounded-xl"
+                          />
                         </div>
                         <div className="grid md:grid-cols-3 gap-3 mb-3">
-                          <input placeholder="Max Guests" type="number" value={room.guests} onChange={(e) => roomChange(index, "guests", e.target.value)} className="border p-3 rounded-xl" />
-                          <input placeholder="Beds" type="number" value={room.beds} onChange={(e) => roomChange(index, "beds", e.target.value)} className="border p-3 rounded-xl" />
-                          <input placeholder="View" value={room.view} onChange={(e) => roomChange(index, "view", e.target.value)} className="border p-3 rounded-xl" />
+                          <input
+                            placeholder="Max Guests"
+                            type="number"
+                            value={room.guests}
+                            onChange={(e) => roomChange(index, "guests", e.target.value)}
+                            className="border p-3 rounded-xl"
+                          />
+                          <input
+                            placeholder="Beds"
+                            type="number"
+                            value={room.beds}
+                            onChange={(e) => roomChange(index, "beds", e.target.value)}
+                            className="border p-3 rounded-xl"
+                          />
+                          <input
+                            placeholder="View"
+                            value={room.view}
+                            onChange={(e) => roomChange(index, "view", e.target.value)}
+                            className="border p-3 rounded-xl"
+                          />
                         </div>
                         <div className="flex gap-4 mb-3 flex-wrap">
-                          <label className="flex items-center gap-2"><input type="checkbox" checked={room.breakfast} onChange={(e) => roomChange(index, "breakfast", e.target.checked)} /> Breakfast Included</label>
-                          <label className="flex items-center gap-2"><input type="checkbox" checked={room.refundable} onChange={(e) => roomChange(index, "refundable", e.target.checked)} /> Free Cancellation</label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={room.breakfast}
+                              onChange={(e) => roomChange(index, "breakfast", e.target.checked)}
+                            />
+                            Breakfast Included
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={room.refundable}
+                              onChange={(e) => roomChange(index, "refundable", e.target.checked)}
+                            />
+                            Free Cancellation
+                          </label>
                         </div>
-                        
+
                         <div className="mt-3">
-                          <label className="text-sm font-medium text-gray-700">Room Images</label>
-                          <input type="file" multiple accept="image/*" onChange={(e) => uploadRoomImages(e, index)} className="mt-1 w-full p-2 border rounded-lg" />
-                          {uploading && <p className="text-yellow-600 text-sm mt-1">Uploading images...</p>}
-                          
+                          <label className="text-sm font-medium text-gray-700">
+                            Room Images
+                          </label>
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={(e) => uploadRoomImages(e, index)}
+                            className="mt-1 w-full p-2 border rounded-lg"
+                          />
+                          {uploading && (
+                            <p className="text-yellow-600 text-sm mt-1 flex items-center gap-1">
+                              <ArrowPathIcon className="h-3 w-3 animate-spin" />
+                              Uploading images...
+                            </p>
+                          )}
+
                           {room.images && room.images.length > 0 && (
                             <div className="mt-3">
                               <div className="flex gap-2 overflow-x-auto pb-2">
                                 {room.images.map((img, imgIdx) => (
                                   <div key={imgIdx} className="relative group flex-shrink-0">
-                                    <img 
-                                      src={img} 
-                                      alt={`Room ${index + 1} - ${imgIdx + 1}`} 
+                                    <img
+                                      src={img}
+                                      alt={`Room ${index + 1} - ${imgIdx + 1}`}
                                       className="h-20 w-20 object-cover rounded-lg border-2 border-gray-200 hover:border-yellow-500 transition cursor-pointer"
                                       onClick={() => openImageCarousel(room.images, imgIdx)}
                                     />
@@ -802,13 +1178,17 @@ function AdminHotels() {
                         </div>
                       </div>
                     ))}
-                    <button onClick={addRoom} className="w-full py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300">
+                    <button
+                      onClick={addRoom}
+                      className="w-full py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300"
+                    >
                       + Add Another Room Type
                     </button>
                   </div>
                 )}
 
-                {activeTab === "highlights" && renderCheckboxGroup("Property Highlights ✨", "highlights", highlightOptions, "🌟", "md:grid-cols-2")}
+                {activeTab === "highlights" &&
+                  renderCheckboxGroup("Property Highlights ✨", "highlights", highlightOptions, "🌟", "md:grid-cols-2")}
                 {activeTab === "facilities" && (
                   <>
                     {renderCheckboxGroup("Popular Facilities 🏨", "popularFacilities", popularFacilitiesOptions, "⭐", "md:grid-cols-2")}
@@ -827,45 +1207,120 @@ function AdminHotels() {
                 {activeTab === "policies" && (
                   <div className="space-y-6">
                     <div className="border rounded-2xl p-6">
-                      <label className="font-bold text-gray-700 mb-3 block flex items-center gap-2"><ClockIcon className="h-5 w-5 text-yellow-500" />Check-in / Check-out Times</label>
+                      <label className="font-bold text-gray-700 mb-3 block flex items-center gap-2">
+                        <ClockIcon className="h-5 w-5 text-yellow-500" />
+                        Check-in / Check-out Times
+                      </label>
                       <div className="grid md:grid-cols-2 gap-4">
-                        <div><label className="text-sm text-gray-500">Check-in From</label><input value={form.checkinFrom} onChange={(e) => setForm({ ...form, checkinFrom: e.target.value })} className="w-full border p-3 rounded-xl mt-1" /></div>
-                        <div><label className="text-sm text-gray-500">Check-out Until</label><input value={form.checkoutUntil} onChange={(e) => setForm({ ...form, checkoutUntil: e.target.value })} className="w-full border p-3 rounded-xl mt-1" /></div>
+                        <div>
+                          <label className="text-sm text-gray-500">Check-in From</label>
+                          <input
+                            value={form.checkinFrom}
+                            onChange={(e) => setForm({ ...form, checkinFrom: e.target.value })}
+                            className="w-full border p-3 rounded-xl mt-1"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-gray-500">Check-out Until</label>
+                          <input
+                            value={form.checkoutUntil}
+                            onChange={(e) => setForm({ ...form, checkoutUntil: e.target.value })}
+                            className="w-full border p-3 rounded-xl mt-1"
+                          />
+                        </div>
                       </div>
                     </div>
                     <div className="border rounded-2xl p-6">
-                      <label className="font-bold text-gray-700 mb-3 block">Child and Extra Bed Policies</label>
-                      <textarea value={form.childPolicies?.infant} onChange={(e) => setForm({ ...form, childPolicies: { ...form.childPolicies, infant: e.target.value } })} className="w-full border p-3 rounded-xl" rows="2" />
-                      <textarea value={form.childPolicies?.children} onChange={(e) => setForm({ ...form, childPolicies: { ...form.childPolicies, children: e.target.value } })} className="w-full border p-3 rounded-xl mt-2" rows="2" />
+                      <label className="font-bold text-gray-700 mb-3 block">
+                        Child and Extra Bed Policies
+                      </label>
+                      <textarea
+                        value={form.childPolicies?.infant}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            childPolicies: { ...form.childPolicies, infant: e.target.value },
+                          })
+                        }
+                        className="w-full border p-3 rounded-xl"
+                        rows="2"
+                      />
+                      <textarea
+                        value={form.childPolicies?.children}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            childPolicies: { ...form.childPolicies, children: e.target.value },
+                          })
+                        }
+                        className="w-full border p-3 rounded-xl mt-2"
+                        rows="2"
+                      />
                     </div>
                     <div className="border rounded-2xl p-6">
-                      <label className="font-bold text-gray-700 mb-3 block">Cancellation Policy</label>
-                      <textarea value={form.cancellationPolicy} onChange={(e) => setForm({ ...form, cancellationPolicy: e.target.value })} className="w-full border p-3 rounded-xl" rows="2" />
+                      <label className="font-bold text-gray-700 mb-3 block">
+                        Cancellation Policy
+                      </label>
+                      <textarea
+                        value={form.cancellationPolicy}
+                        onChange={(e) => setForm({ ...form, cancellationPolicy: e.target.value })}
+                        className="w-full border p-3 rounded-xl"
+                        rows="2"
+                      />
                     </div>
                   </div>
                 )}
                 {activeTab === "media" && (
                   <div className="border rounded-2xl p-6">
-                    <label className="font-bold text-gray-700 mb-3 block flex items-center gap-2"><PhotoIcon className="h-5 w-5 text-yellow-500" />Hotel Photos</label>
+                    <label className="font-bold text-gray-700 mb-3 block flex items-center gap-2">
+                      <PhotoIcon className="h-5 w-5 text-yellow-500" />
+                      Hotel Photos
+                    </label>
                     <div className="flex gap-3 mb-3 flex-wrap">
                       {form.images?.map((img, idx) => (
                         <div key={idx} className="relative group">
-                          <img src={img} alt="" className="h-24 w-24 object-cover rounded-lg border-2 border-gray-200 hover:border-yellow-500 transition cursor-pointer" 
-                            onClick={() => openImageCarousel(form.images, idx)} />
-                          <button onClick={() => removeImage(idx)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-red-600 transition opacity-0 group-hover:opacity-100">✕</button>
+                          <img
+                            src={img}
+                            alt=""
+                            className="h-24 w-24 object-cover rounded-lg border-2 border-gray-200 hover:border-yellow-500 transition cursor-pointer"
+                            onClick={() => openImageCarousel(form.images, idx)}
+                          />
+                          <button
+                            onClick={() => removeImage(idx)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-red-600 transition opacity-0 group-hover:opacity-100"
+                          >
+                            ✕
+                          </button>
                         </div>
                       ))}
                     </div>
-                    <input type="file" multiple accept="image/*" onChange={uploadHotelImages} className="w-full" />
-                    {uploading && <p className="text-yellow-600 mt-2">Uploading images...</p>}
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={uploadHotelImages}
+                      className="w-full"
+                    />
+                    {uploading && (
+                      <p className="text-yellow-600 mt-2 flex items-center gap-1">
+                        <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                        Uploading images...
+                      </p>
+                    )}
                   </div>
                 )}
 
                 <div className="flex gap-4 pt-4 border-t sticky bottom-0 bg-white py-4">
-                  <button onClick={saveHotel} className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-black py-3 rounded-xl font-bold hover:shadow-lg transition-all duration-300 text-lg">
+                  <button
+                    onClick={saveHotel}
+                    className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-black py-3 rounded-xl font-bold hover:shadow-lg transition-all duration-300 text-lg"
+                  >
                     {editId ? "Update Hotel" : "Add Hotel"}
                   </button>
-                  <button onClick={resetForm} className="px-8 py-3 bg-gray-200 rounded-xl hover:bg-gray-300 transition font-semibold">
+                  <button
+                    onClick={resetForm}
+                    className="px-8 py-3 bg-gray-200 rounded-xl hover:bg-gray-300 transition font-semibold"
+                  >
                     Cancel
                   </button>
                 </div>
@@ -885,14 +1340,14 @@ function AdminHotels() {
             >
               ✕ Close
             </button>
-            
+
             <div className="relative">
               <img
                 src={carouselImages[carouselIndex]}
                 alt="Preview"
                 className="w-full h-[70vh] object-contain"
               />
-              
+
               {carouselImages.length > 1 && (
                 <>
                   <button
@@ -910,9 +1365,11 @@ function AdminHotels() {
                 </>
               )}
             </div>
-            
+
             <div className="text-center text-white mt-4">
-              <p>{carouselIndex + 1} of {carouselImages.length}</p>
+              <p>
+                {carouselIndex + 1} of {carouselImages.length}
+              </p>
             </div>
           </div>
         </div>

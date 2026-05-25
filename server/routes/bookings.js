@@ -607,4 +607,21 @@ router.put("/cancel-by-owner/:id", auth, async (req, res) => {
   }
 });
 
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ msg: "Access denied. Admin only." });
+    }
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ msg: "Booking not found" });
+    }
+    await booking.deleteOne();
+    res.json({ msg: "Booking deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Delete Error" });
+  }
+});
+
 module.exports = router;
