@@ -1,5 +1,5 @@
 // client/src/pages/HotelDetails.js
-// UPDATED - With Working Coupons & Offers
+// ULTRA MODERN UI - AI tools repositioned, floating negotiator, premium design
 
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
@@ -27,7 +27,11 @@ import {
   XMarkIcon,
   InformationCircleIcon,
   HeartIcon as HeartOutline,
-  TicketIcon
+  TicketIcon,
+  ChatBubbleLeftRightIcon,
+  CurrencyRupeeIcon,
+  SunIcon,
+  CloudIcon
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid';
 
@@ -61,6 +65,11 @@ function HotelDetails() {
   const [couponSuccess, setCouponSuccess] = useState("");
   const [couponApplying, setCouponApplying] = useState(false);
   
+  // AI Tool modals
+  const [showPriceNegotiator, setShowPriceNegotiator] = useState(false);
+  const [showItineraryModal, setShowItineraryModal] = useState(false);
+  const [showNegotiationModal, setShowNegotiationModal] = useState(false);
+  
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -72,6 +81,7 @@ function HotelDetails() {
     else return { rate: 18, name: "18% GST" };
   };
 
+  // Initialize dates
   useEffect(() => {
     const today = new Date();
     const dayAfter = new Date(today);
@@ -80,6 +90,7 @@ function HotelDetails() {
     setCheckOut(dayAfter.toISOString().split('T')[0]);
   }, []);
 
+  // Fetch hotel data
   useEffect(() => {
     const fetchHotel = async () => {
       try {
@@ -89,7 +100,6 @@ function HotelDetails() {
         const data = await res.json();
         setHotel(data);
         if (data.roomTypes && data.roomTypes.length > 0) setSelectedRoom(data.roomTypes[0]);
-        // Load coupons for this hotel
         loadHotelCoupons(data);
       } catch (err) {
         console.error("Error:", err);
@@ -99,72 +109,22 @@ function HotelDetails() {
     if (id) fetchHotel();
   }, [id]);
 
-  // Replace the loadHotelCoupons function with this:
-const loadHotelCoupons = async (hotelData) => {
-  try {
-    // Use the hotel-specific endpoint that only returns coupons for this hotel
-    const response = await fetch(`http://localhost:5000/api/coupons/hotel/${hotelData._id}`);
-    
-    if (response.ok) {
-      const hotelCoupons = await response.json();
-      setCoupons(hotelCoupons);
-      console.log(`✅ Found ${hotelCoupons.length} coupons for ${hotelData.hotelName}`);
-    } else {
-      setCoupons([]);
-    }
-  } catch (error) {
-    console.error("Error loading coupons:", error);
-    setCoupons([]);
-  }
-};
-
-  // Apply coupon
-  const applyCoupon = async () => {
-    if (!couponCode.trim()) {
-      setCouponError("Please enter a coupon code");
-      return;
-    }
-    
-    setCouponApplying(true);
-    setCouponError("");
-    setCouponSuccess("");
-    
+  const loadHotelCoupons = async (hotelData) => {
     try {
-      const grandTotal = calculateGrandTotal();
-      const response = await fetch("http://localhost:5000/api/coupons/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: couponCode,
-          amount: grandTotal,
-          hotelId: hotel._id
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.valid) {
-        setAppliedCoupon(data.coupon);
-        setCouponDiscount(data.coupon.discountAmount);
-        setCouponSuccess(`Coupon applied! You save ₹${data.coupon.discountAmount}`);
-        setShowCouponModal(false);
-        setCouponCode("");
+      const response = await fetch(`http://localhost:5000/api/coupons/hotel/${hotelData._id}`);
+      if (response.ok) {
+        const hotelCoupons = await response.json();
+        setCoupons(hotelCoupons);
       } else {
-        setCouponError(data.msg || "Invalid coupon code");
+        setCoupons([]);
       }
     } catch (error) {
-      setCouponError("Failed to apply coupon. Please try again.");
-    } finally {
-      setCouponApplying(false);
+      console.error("Error loading coupons:", error);
+      setCoupons([]);
     }
   };
 
-  const removeCoupon = () => {
-    setAppliedCoupon(null);
-    setCouponDiscount(0);
-    setCouponSuccess("");
-  };
-
+  // Wishlist
   useEffect(() => {
     if (user && id) checkWishlistStatus();
   }, [user, id]);
@@ -221,6 +181,7 @@ const loadHotelCoupons = async (hotelData) => {
     setTimeout(() => toast.remove(), 3000);
   };
 
+  // Image carousel
   useEffect(() => {
     if (!isAutoPlaying) return;
     if (!hotel?.images || hotel.images.length <= 1) return;
@@ -244,6 +205,7 @@ const loadHotelCoupons = async (hotelData) => {
 
   const handleImageError = (index) => { setImageErrors(prev => ({ ...prev, [index]: true })); };
 
+  // Calculations
   const calculateNights = () => {
     if (!checkIn || !checkOut) return 0;
     return Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24));
@@ -296,21 +258,22 @@ const loadHotelCoupons = async (hotelData) => {
     navigate("/checkout", { state: { booking: bookingData } });
   };
 
+  // Room gallery modal
   const openRoomGallery = (room) => {
     setSelectedRoomForGallery(room);
     setCurrentRoomImageIndex(0);
     setShowRoomGallery(true);
   };
 
-  const nextRoomImage = () => {
-    if (selectedRoomForGallery && selectedRoomForGallery.images) {
-      setCurrentRoomImageIndex((prev) => (prev + 1) % selectedRoomForGallery.images.length);
-    }
-  };
-
   const prevRoomImage = () => {
     if (selectedRoomForGallery && selectedRoomForGallery.images) {
       setCurrentRoomImageIndex((prev) => (prev - 1 + selectedRoomForGallery.images.length) % selectedRoomForGallery.images.length);
+    }
+  };
+
+  const nextRoomImage = () => {
+    if (selectedRoomForGallery && selectedRoomForGallery.images) {
+      setCurrentRoomImageIndex((prev) => (prev + 1) % selectedRoomForGallery.images.length);
     }
   };
 
@@ -355,11 +318,17 @@ const loadHotelCoupons = async (hotelData) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Image Carousel Section */}
+      {/* Hero Section - Premium Carousel */}
       <div className="relative h-[500px] md:h-[650px] bg-black overflow-hidden">
         <div className="relative h-full w-full">
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent z-10"></div>
-          <img key={currentImageIndex} src={currentImage} alt={`${hotel.hotelName} - View ${currentImageIndex + 1}`} className="w-full h-full object-cover transition-all duration-1000 ease-in-out transform scale-105" onError={() => handleImageError(currentImageIndex)} />
+          <img 
+            key={currentImageIndex} 
+            src={currentImage} 
+            alt={`${hotel.hotelName} - View ${currentImageIndex + 1}`} 
+            className="w-full h-full object-cover transition-all duration-1000 ease-in-out transform scale-105" 
+            onError={() => handleImageError(currentImageIndex)} 
+          />
         </div>
         {allImages.length > 1 && (
           <div className="absolute top-4 right-4 z-20 flex gap-2">
@@ -406,6 +375,7 @@ const loadHotelCoupons = async (hotelData) => {
           
           {/* LEFT COLUMN */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Quick Stats */}
             <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-wrap justify-around gap-4">
               <div className="text-center"><div className="text-yellow-500 text-2xl mb-1">🏨</div><p className="text-sm font-semibold">{hotel.roomTypes?.length || 0} Room Types</p></div>
               <div className="text-center"><div className="text-yellow-500 text-2xl mb-1">🛎️</div><p className="text-sm font-semibold">24/7 Service</p></div>
@@ -413,8 +383,10 @@ const loadHotelCoupons = async (hotelData) => {
               <div className="text-center"><div className="text-yellow-500 text-2xl mb-1">💳</div><p className="text-sm font-semibold">Secure Booking</p></div>
             </div>
 
+            {/* Description */}
             <div className="bg-white rounded-2xl p-6 shadow-sm"><h2 className="text-2xl font-bold mb-4">About This Hotel</h2><p className="text-gray-600 leading-relaxed">{hotel.description || "Experience luxury and comfort at this beautiful property."}</p></div>
 
+            {/* Highlights */}
             {hotel.highlights && hotel.highlights.length > 0 && (
               <div className="bg-white rounded-2xl p-6 shadow-sm">
                 <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><SparklesIcon className="h-6 w-6 text-yellow-500" /> Property Highlights</h2>
@@ -422,6 +394,7 @@ const loadHotelCoupons = async (hotelData) => {
               </div>
             )}
 
+            {/* Room Types */}
             {hotel.roomTypes && hotel.roomTypes.length > 0 && (
               <div className="bg-white rounded-2xl p-6 shadow-sm">
                 <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><HomeIcon className="h-6 w-6 text-yellow-500" /> Room Types</h2>
@@ -447,6 +420,7 @@ const loadHotelCoupons = async (hotelData) => {
               </div>
             )}
 
+            {/* Facilities */}
             {uniqueFacilities.length > 0 && (
               <div className="bg-white rounded-2xl p-6 shadow-sm">
                 <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><WifiIcon className="h-6 w-6 text-yellow-500" /> Facilities & Amenities</h2>
@@ -455,6 +429,7 @@ const loadHotelCoupons = async (hotelData) => {
               </div>
             )}
 
+            {/* Nearby Attractions */}
             {hotel.nearbyAttractions && hotel.nearbyAttractions.length > 0 && (
               <div className="bg-white rounded-2xl p-6 shadow-sm">
                 <h2 className="text-2xl font-bold mb-4 flex items-center gap-2"><MapPinIcon className="h-6 w-6 text-yellow-500" /> Nearby Attractions</h2>
@@ -462,6 +437,7 @@ const loadHotelCoupons = async (hotelData) => {
               </div>
             )}
 
+            {/* Guest Reviews */}
             {hotel.reviews && hotel.reviews.length > 0 && (
               <div className="bg-white rounded-2xl p-6 shadow-sm">
                 <h2 className="text-2xl font-bold mb-4">Guest Reviews</h2>
@@ -471,9 +447,10 @@ const loadHotelCoupons = async (hotelData) => {
             )}
           </div>
 
-          {/* RIGHT COLUMN - Booking Card with Coupons */}
+          {/* RIGHT COLUMN - Booking Card with integrated Weather & Price Negotiator */}
           <div className="lg:col-span-1">
             <div className="sticky top-24">
+              {/* Main Booking Card */}
               <div className="bg-white rounded-2xl shadow-lg p-6 booking-card relative">
                 <button onClick={isInWishlist ? removeFromWishlist : addToWishlist} disabled={wishlistLoading} className={`absolute top-4 right-4 p-2 rounded-full transition-all duration-200 z-10 ${isInWishlist ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-red-500'} ${wishlistLoading ? 'opacity-50 cursor-not-allowed' : ''}`} title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}>
                   {isInWishlist ? <HeartSolid className="h-5 w-5" /> : <HeartOutline className="h-5 w-5" />}
@@ -500,50 +477,6 @@ const loadHotelCoupons = async (hotelData) => {
                   </div>
                 </div>
 
-{/* Coupon Section - Show Only, No Apply Function */}
-<div className="mt-4 pt-2">
-  <div className="flex items-center justify-between mb-2">
-    <div className="flex items-center gap-2">
-      <TicketIcon className="h-4 w-4 text-yellow-600" />
-      <span className="text-sm font-medium text-gray-700">Available Offers</span>
-    </div>
-    {coupons.length > 0 && (
-      <button 
-        onClick={() => setShowCouponModal(true)} 
-        className="text-xs text-yellow-600 hover:text-yellow-700 font-medium"
-      >
-        View All ({coupons.length})
-      </button>
-    )}
-  </div>
-  
-  {coupons.length > 0 ? (
-    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <TicketIcon className="h-4 w-4 text-yellow-600" />
-          <span className="text-sm font-medium text-yellow-800">
-            {coupons.length} Special Offer{coupons.length !== 1 ? 's' : ''} Available!
-          </span>
-        </div>
-        <button
-          onClick={() => setShowCouponModal(true)}
-          className="text-xs bg-yellow-600 text-white px-3 py-1 rounded-lg hover:bg-yellow-700 transition"
-        >
-          View Offers
-        </button>
-      </div>
-      <p className="text-xs text-yellow-700 mt-2">
-        💡 Copy coupon code and apply at checkout
-      </p>
-    </div>
-  ) : (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-      <p className="text-xs text-gray-500">No active offers at the moment</p>
-    </div>
-  )}
-</div>
-                
                 {/* Price Breakdown */}
                 {selectedRoom && (
                   <div className="mt-4 pt-4 border-t">
@@ -560,8 +493,53 @@ const loadHotelCoupons = async (hotelData) => {
                 
                 <button onClick={handleBooking} className="w-full mt-6 bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-xl font-bold hover:shadow-lg transition-all transform hover:scale-105">Book Now</button>
                 <p className="text-xs text-gray-400 text-center mt-3">✓ Free cancellation up to 7 days before check-in</p>
+
+                {/* Coupon Section (compact, with modal trigger) */}
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <TicketIcon className="h-4 w-4 text-yellow-600" />
+                      <span className="text-sm font-medium text-gray-700">Available Offers</span>
+                    </div>
+                    {coupons.length > 0 && (
+                      <button onClick={() => setShowCouponModal(true)} className="text-xs text-yellow-600 hover:text-yellow-700 font-medium">
+                        View All ({coupons.length})
+                      </button>
+                    )}
+                  </div>
+                  {coupons.length > 0 ? (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <p className="text-xs text-yellow-700">💡 {coupons.length} special offer(s) available. Click "View Offers" to copy codes.</p>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                      <p className="text-xs text-gray-500">No active offers at the moment</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Price Negotiator Button (opens modal) */}
+                <div className="mt-4">
+                  <button
+                    onClick={() => setShowPriceNegotiator(true)}
+                    className="w-full bg-purple-50 border border-purple-200 text-purple-700 py-2 rounded-xl font-medium hover:bg-purple-100 transition flex items-center justify-center gap-2"
+                  >
+                    <CurrencyRupeeIcon className="h-4 w-4" />
+                    Negotiate Price
+                  </button>
+                </div>
+
+                {/* Weather Widget (compact) */}
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex items-center gap-2 mb-2">
+                    <SunIcon className="h-4 w-4 text-yellow-500" />
+                    <span className="text-sm font-medium">Current Weather in {hotel.city}</span>
+                  </div>
+                  <WeatherWidget city={hotel.city} compact />
+                </div>
               </div>
-              
+
+              {/* Contact Card */}
               <div className="bg-white rounded-2xl shadow-sm p-4 mt-4">
                 <h3 className="font-semibold mb-2">Have questions?</h3>
                 <p className="text-sm text-gray-500 mb-3">Contact the property directly</p>
@@ -573,103 +551,152 @@ const loadHotelCoupons = async (hotelData) => {
             </div>
           </div>
         </div>
-        
+
+        {/* Itinerary Planner Section (now a full-width call-to-action) */}
+        {hotel && (
+          <div className="mt-12 mb-8">
+            <div className="bg-gradient-to-r from-green-50 to-teal-50 rounded-2xl p-6 shadow-sm border border-green-100">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-2xl">🗺️</div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-800">Plan Your Perfect Trip</h3>
+                    <p className="text-gray-600 text-sm">Get a personalized day-by-day itinerary with attractions, budget, and local tips.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowItineraryModal(true)}
+                  className="px-6 py-2 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition shadow-md hover:shadow-lg flex items-center gap-2"
+                >
+                  <SparklesIcon className="h-5 w-5" />
+                  Plan My Trip
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="mt-8 text-center"><Link to="/hotels" className="text-yellow-600 hover:underline inline-flex items-center gap-1">← Back to all hotels</Link></div>
       </div>
 
-      {/* Coupon Modal - Copy Code Only */}
-{showCouponModal && (
-  <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-    <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
-      <div className="bg-gradient-to-r from-yellow-500 to-orange-500 p-5 rounded-t-2xl">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <TicketIcon className="h-6 w-6 text-white" />
-            <h3 className="text-xl font-bold text-white">Available Offers</h3>
-          </div>
-          <button onClick={() => setShowCouponModal(false)} className="text-white hover:text-gray-200 transition">
-            <XMarkIcon className="h-6 w-6" />
-          </button>
-        </div>
-        <p className="text-white/80 text-sm mt-1">Copy code and apply at checkout</p>
-      </div>
-      
-      <div className="p-5">
-        {coupons.length === 0 ? (
-          <div className="text-center py-8">
-            <TicketIcon className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-            <p className="text-gray-500">No active offers at the moment</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {coupons.map((coupon, idx) => (
-              <div key={coupon._id} className="border-2 rounded-xl p-4 hover:shadow-md transition-all duration-300">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                        <span className="text-yellow-600 text-sm font-bold">🎁</span>
-                      </div>
-                      <span className="font-bold text-lg font-mono text-gray-800">{coupon.code}</span>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {coupon.discountType === "percentage" 
-                        ? `${coupon.discountValue}% OFF` 
-                        : `₹${coupon.discountValue} OFF`}
-                    </p>
-                    {coupon.description && (
-                      <p className="text-xs text-gray-500 mt-1">{coupon.description}</p>
-                    )}
-                    <div className="flex flex-wrap gap-3 mt-2">
-                      {coupon.minBookingAmount > 0 && (
-                        <span className="text-xs text-gray-500">Min. spend ₹{coupon.minBookingAmount}</span>
-                      )}
-                      {coupon.maxDiscount && (
-                        <span className="text-xs text-gray-500">Max discount ₹{coupon.maxDiscount}</span>
-                      )}
-                      {coupon.validUntil && (
-                        <span className="text-xs text-gray-500">
-                          Valid till: {new Date(coupon.validUntil).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(coupon.code);
-                      showToast(`✓ "${coupon.code}" copied to clipboard!`, 'success');
-                    }}
-                    className="ml-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-black px-4 py-2 rounded-lg text-sm font-semibold hover:shadow-md transition-all flex items-center gap-2 whitespace-nowrap"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                    </svg>
-                    Copy Code
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        
-        <div className="mt-4 pt-4 border-t text-center">
-          <p className="text-xs text-gray-500">
-            💡 Copy the coupon code and apply it at checkout to get discount
-          </p>
-        </div>
-        
-        <button
-          onClick={() => setShowCouponModal(false)}
-          className="w-full mt-4 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition font-medium"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+      {/* ========== MODALS ========== */}
 
-      {/* Room Image Gallery Modal */}
+      {/* Coupon Modal - Copy Code Only */}
+      {showCouponModal && (
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
+            <div className="bg-gradient-to-r from-yellow-500 to-orange-500 p-5 rounded-t-2xl">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <TicketIcon className="h-6 w-6 text-white" />
+                  <h3 className="text-xl font-bold text-white">Available Offers</h3>
+                </div>
+                <button onClick={() => setShowCouponModal(false)} className="text-white hover:text-gray-200 transition">
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <p className="text-white/80 text-sm mt-1">Copy code and apply at checkout</p>
+            </div>
+            
+            <div className="p-5">
+              {coupons.length === 0 ? (
+                <div className="text-center py-8">
+                  <TicketIcon className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500">No active offers at the moment</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {coupons.map((coupon, idx) => (
+                    <div key={coupon._id} className="border-2 rounded-xl p-4 hover:shadow-md transition-all duration-300">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                              <span className="text-yellow-600 text-sm font-bold">🎁</span>
+                            </div>
+                            <span className="font-bold text-lg font-mono text-gray-800">{coupon.code}</span>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {coupon.discountType === "percentage" 
+                              ? `${coupon.discountValue}% OFF` 
+                              : `₹${coupon.discountValue} OFF`}
+                          </p>
+                          {coupon.description && <p className="text-xs text-gray-500 mt-1">{coupon.description}</p>}
+                          <div className="flex flex-wrap gap-3 mt-2">
+                            {coupon.minBookingAmount > 0 && <span className="text-xs text-gray-500">Min. spend ₹{coupon.minBookingAmount}</span>}
+                            {coupon.maxDiscount && <span className="text-xs text-gray-500">Max discount ₹{coupon.maxDiscount}</span>}
+                            {coupon.validUntil && <span className="text-xs text-gray-500">Valid till: {new Date(coupon.validUntil).toLocaleDateString()}</span>}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(coupon.code);
+                            showToast(`✓ "${coupon.code}" copied to clipboard!`, 'success');
+                          }}
+                          className="ml-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-black px-4 py-2 rounded-lg text-sm font-semibold hover:shadow-md transition-all flex items-center gap-2 whitespace-nowrap"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                          </svg>
+                          Copy Code
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <div className="mt-4 pt-4 border-t text-center">
+                <p className="text-xs text-gray-500">💡 Copy the coupon code and apply it at checkout to get discount</p>
+              </div>
+              
+              <button onClick={() => setShowCouponModal(false)} className="w-full mt-4 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition font-medium">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Price Negotiator Modal */}
+      {showPriceNegotiator && (
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+              <h3 className="text-xl font-bold flex items-center gap-2">💰 Negotiate Price</h3>
+              <button onClick={() => setShowPriceNegotiator(false)} className="text-gray-400 hover:text-gray-600">
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-5">
+              <PriceNegotiator 
+                hotelId={hotel._id} 
+                hotelPrice={selectedRoom?.price || hotel.price}
+                onClose={() => setShowPriceNegotiator(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Itinerary Planner Modal */}
+      {showItineraryModal && (
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+              <h3 className="text-xl font-bold flex items-center gap-2">🗺️ AI Travel Itinerary</h3>
+              <button onClick={() => setShowItineraryModal(false)} className="text-gray-400 hover:text-gray-600">
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-5">
+              <ItineraryPlanner hotel={hotel} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Room Gallery Modal */}
       {showRoomGallery && selectedRoomForGallery && (
         <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center">
           <div className="relative w-full max-w-6xl mx-4">
@@ -696,33 +723,56 @@ const loadHotelCoupons = async (hotelData) => {
         </div>
       )}
 
-      {/* AI Features Section */}
-      {hotel && (
-        <div className="max-w-7xl mx-auto px-4 mt-8">
-          <div className="border-t border-gray-200 pt-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2"><SparklesIcon className="h-6 w-6 text-yellow-500" /> AI Powered Features</h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              <WeatherWidget city={hotel.city} />
-              <PriceNegotiator hotelId={hotel._id} hotelPrice={selectedRoom?.price || hotel.price} />
-              <div className="md:col-span-2"><ItineraryPlanner hotel={hotel} /></div>
+      {/* Floating Negotiation Bot (Chat Bubble) */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <button
+          onClick={() => setShowNegotiationModal(true)}
+          className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 group"
+        >
+          <ChatBubbleLeftRightIcon className="h-6 w-6 group-hover:rotate-12 transition-transform" />
+          <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></span>
+        </button>
+      </div>
+
+      {/* Negotiation Modal */}
+      {showNegotiationModal && hotel && (
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+              <h3 className="text-xl font-bold flex items-center gap-2">💬 Negotiate with Hotel</h3>
+              <button onClick={() => setShowNegotiationModal(false)} className="text-gray-400 hover:text-gray-600">
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-5">
+              <UserNegotiationBot
+                hotelId={hotel._id}
+                hotelName={hotel.hotelName}
+                currentPrice={selectedRoom?.price || hotel.price}
+                roomType={selectedRoom?.name}
+                checkIn={checkIn}
+                checkOut={checkOut}
+                guests={guests}
+                onNegotiationSuccess={(offer) => { 
+                  setShowNegotiationModal(false);
+                  navigate('/checkout', { state: { negotiatedOffer: offer } }); 
+                }}
+                onClose={() => setShowNegotiationModal(false)}
+              />
             </div>
           </div>
         </div>
       )}
 
-      {/* Negotiation Bot */}
-      {hotel && (
-        <UserNegotiationBot
-          hotelId={hotel._id}
-          hotelName={hotel.hotelName}
-          currentPrice={selectedRoom?.price || hotel.price}
-          roomType={selectedRoom?.name}
-          checkIn={checkIn}
-          checkOut={checkOut}
-          guests={guests}
-          onNegotiationSuccess={(offer) => { navigate('/checkout', { state: { negotiatedOffer: offer } }); }}
-        />
-      )}
+      <style>{`
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
