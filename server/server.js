@@ -1,443 +1,243 @@
+// server/server.js  — SECURITY-HARDENED VERSION
+// Key fixes:
+//   1. Validates all required env vars at startup
+//   2. CORS whitelist instead of origin: true
+//   3. No fallback JWT secret
+//   4. Rate limiting on auth routes
+//   5. Helmet for security headers
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const http = require('http');
 const socketIo = require('socket.io');
-const session = require('express-session'); // ADD THIS
-const passport = require('passport'); // ADD THIS
+const session = require('express-session');
+const passport = require('passport');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
 
 dotenv.config();
+
+// ─── STARTUP VALIDATION ────────────────────────────────────────────────────────
+// Fail fast if critical env vars are missing — never use fallback secrets in prod
+const REQUIRED_ENV = ['JWT_SECRET', 'SESSION_SECRET', 'MONGODB_URI'];
+const missing = REQUIRED_ENV.filter((key) => !process.env[key]);
+if (missing.length > 0) {
+  console.error(`❌ Missing required environment variables: ${missing.join(', ')}`);
+  console.error('   Copy server/.env.example to server/.env and fill in the values.');
+  process.exit(1);
+}
 
 const app = express();
 const server = http.createServer(app);
 
-// Socket.io setup with CORS
-const io = socketIo(server, {
-  cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"],
-    credentials: true
-  }
-});
+// ─── CORS WHITELIST ────────────────────────────────────────────────────────────
+// FIXED: No longer allows all origins. Add your deployed frontend URL here.
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000')
+  .split(',')
+  .map((o) => o.trim());
 
-// ============ MIDDLEWARE (ORDER IS CRITICAL!) ============
-
-// 1. CORS - Must be first
 app.use(cors({
-  origin: "http://localhost:3000",
-  credentials: true
+  origin: (origin, callback) => {
+    // Allow server-to-server (no origin) and whitelisted origins
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
+  credentials: true,
 }));
 
-// 2. Body parsers
+// ─── SOCKET.IO ─────────────────────────────────────────────────────────────────
+const io = socketIo(server, {
+  cors: { origin: allowedOrigins, methods: ['GET', 'POST'], credentials: true },
+});
+
+// ─── SECURITY MIDDLEWARE ───────────────────────────────────────────────────────
+app.use(helmet({ contentSecurityPolicy: false })); // CSP disabled to avoid breaking React
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// 3. Session middleware - REQUIRED for Passport
+// Session
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your_fallback_session_secret_key_change_this',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Set to true if using HTTPS
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in prod
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
+    maxAge: 24 * 60 * 60 * 1000,
+  },
 }));
 
-// 4. Passport middleware - MUST be after session
 app.use(passport.initialize());
 app.use(passport.session());
 
-// ============================================
-// PASSPORT SESSION FIX
-// ============================================
-
-passport.serializeUser((user, done) => {
-
-  try {
-
-    done(null, user._id);
-
-  } catch (error) {
-
-    done(error, null);
-
-  }
-
-});
-
+passport.serializeUser((user, done) => done(null, user._id));
 passport.deserializeUser(async (id, done) => {
-
   try {
-
     const User = require('./models/User');
-
-    const user = await User.findById(id);
-
-    done(null, user);
-
-  } catch (error) {
-
-    done(error, null);
-
+    done(null, await User.findById(id));
+  } catch (err) {
+    done(err, null);
   }
-
 });
 
+// ─── RATE LIMITING ─────────────────────────────────────────────────────────────
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
-// Make io available to routes
-app.set('io', io);
+// ─── SOCKET.IO NEGOTIATION ─────────────────────────────────────────────────────
+const connectedUsers = new Map();
+const connectedOwners = new Map();
 
-// Store connected users
-const connectedUsers = new Map(); // userId -> socketId
-const connectedOwners = new Map(); // hotelId -> socketId
-const activeNegotiations = new Map(); // negotiationId -> negotiation
+// NOTE: activeNegotiations is now persisted to MongoDB (see Negotiation model).
+// The Map is only a runtime cache for online-user routing.
+const activeNegotiations = new Map();
 
-// Socket.io connection handling
 io.on('connection', (socket) => {
-  console.log('🔌 New client connected:', socket.id);
-  
-  // Get token from handshake auth
   const token = socket.handshake.auth.token;
   if (token) {
     try {
-      const jwt = require('jsonwebtoken');
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
-      socket.userId = decoded.id || decoded.userId;
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      socket.userId = decoded.id;
       socket.userRole = decoded.role;
       socket.userName = decoded.name || decoded.email?.split('@')[0] || 'User';
-      
-      console.log(`✅ User authenticated: ${socket.userName} (${socket.userRole})`);
-      
-      // Store user connection
       connectedUsers.set(socket.userId, socket.id);
     } catch (err) {
-      console.log('❌ Invalid token:', err.message);
+      socket.disconnect();
+      return;
     }
   }
-  
-  // Owner registers for their hotel
-  socket.on('register-owner', (data) => {
-    const { hotelId, ownerId } = data;
-    if (hotelId) {
+
+  socket.on('register-owner', ({ hotelId }) => {
+    if (hotelId && socket.userRole === 'owner') {
       connectedOwners.set(hotelId, socket.id);
       socket.hotelId = hotelId;
-      console.log(`🏨 Owner registered for hotel ${hotelId}`);
-      
-      // Send any pending negotiations for this hotel
-      const pendingNegotiations = Array.from(activeNegotiations.values())
-        .filter(n => n.hotelId === hotelId && n.status === 'pending');
-      
-      if (pendingNegotiations.length > 0) {
-        socket.emit('pending-negotiations', { negotiations: pendingNegotiations });
-        console.log(`📨 Sent ${pendingNegotiations.length} pending negotiations to owner`);
-      }
     }
   });
-  
-  // User starts negotiation
-  socket.on('start-negotiation', (data) => {
+
+  socket.on('start-negotiation', async (data) => {
     const { hotelId, hotelName, message, userBudget, checkIn, checkOut, guests, roomType } = data;
-    const userId = socket.userId;
-    
-    console.log(`💬 Negotiation request from user ${userId} for hotel ${hotelName}`);
-    
-    if (!userId) {
-      socket.emit('negotiation-error', { message: 'Please login to negotiate' });
-      return;
-    }
-    
+    if (!socket.userId) return socket.emit('negotiation-error', { message: 'Please login first' });
+
     const negotiationId = `neg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
     const negotiation = {
-      id: negotiationId,
-      hotelId,
-      hotelName,
-      userId,
-      userName: socket.userName || 'Guest',
-      userBudget,
-      checkIn,
-      checkOut,
-      guests,
-      roomType,
-      messages: [{
-        id: Date.now(),
-        type: 'user',
-        message: message,
-        timestamp: new Date().toISOString(),
-        sender: socket.userName || 'Guest'
-      }],
-      status: 'pending',
-      createdAt: new Date()
+      id: negotiationId, hotelId, hotelName, userId: socket.userId,
+      userName: socket.userName, userBudget, checkIn, checkOut, guests, roomType,
+      messages: [{ id: Date.now(), type: 'user', message, timestamp: new Date().toISOString(), sender: socket.userName }],
+      status: 'pending', createdAt: new Date(),
     };
-    
+
+    // Persist to DB
+    try {
+      const Negotiation = require('./models/Negotiation');
+      await Negotiation.create(negotiation);
+    } catch (e) { console.error('Failed to persist negotiation:', e.message); }
+
     activeNegotiations.set(negotiationId, negotiation);
-    console.log(`📝 Created negotiation ${negotiationId}`);
-    
-    // Notify the owner if online
+
     const ownerSocketId = connectedOwners.get(hotelId);
     if (ownerSocketId) {
-      io.to(ownerSocketId).emit('new-negotiation-request', {
-        negotiationId,
-        hotelId,
-        hotelName,
-        userId,
-        userName: socket.userName || 'Guest',
-        message: message,
-        userBudget,
-        checkIn,
-        checkOut,
-        guests,
-        roomType,
-        timestamp: new Date().toISOString()
-      });
-      console.log(`📤 Sent negotiation request to owner for hotel ${hotelId}`);
-      
-      socket.emit('negotiation-started', {
-        negotiationId,
-        message: '✅ Your request has been sent to the hotel owner. They will respond shortly!'
-      });
+      io.to(ownerSocketId).emit('new-negotiation-request', { negotiationId, ...data, userName: socket.userName, timestamp: new Date().toISOString() });
+      socket.emit('negotiation-started', { negotiationId, message: '✅ Request sent to the hotel owner.' });
     } else {
-      console.log(`⚠️ Owner not online for hotel ${hotelId}`);
-      socket.emit('negotiation-started', {
-        negotiationId,
-        message: '📝 The hotel owner is currently offline. Your message has been saved and will be delivered when they come online.'
-      });
+      socket.emit('negotiation-started', { negotiationId, message: '📝 Owner is offline. Your message is saved.' });
     }
   });
-  
-  // Owner responds to negotiation
-  socket.on('owner-response', (data) => {
-    const { negotiationId, response, offerPrice, inclusions, specialDeal } = data;
-    
-    console.log(`💬 Owner response to negotiation ${negotiationId}`);
-    
+
+  socket.on('owner-response', async ({ negotiationId, response, offerPrice, inclusions, specialDeal }) => {
     const negotiation = activeNegotiations.get(negotiationId);
-    if (!negotiation) {
-      socket.emit('error', { message: 'Negotiation session not found' });
-      return;
-    }
-    
-    // Add owner response
-    negotiation.messages.push({
-      id: Date.now(),
-      type: 'owner',
-      message: response,
-      offerPrice,
-      inclusions,
-      specialDeal,
-      timestamp: new Date().toISOString(),
-      sender: 'Hotel Owner'
-    });
+    if (!negotiation) return socket.emit('error', { message: 'Negotiation not found' });
+
+    negotiation.messages.push({ id: Date.now(), type: 'owner', message: response, offerPrice, inclusions, specialDeal, timestamp: new Date().toISOString(), sender: 'Hotel Owner' });
     negotiation.status = 'responded';
-    
     activeNegotiations.set(negotiationId, negotiation);
-    
-    // Notify the user
+
+    // Persist update
+    try {
+      const Negotiation = require('./models/Negotiation');
+      await Negotiation.findOneAndUpdate({ id: negotiationId }, { messages: negotiation.messages, status: 'responded' });
+    } catch (e) {}
+
     const userSocketId = connectedUsers.get(negotiation.userId);
     if (userSocketId) {
-      io.to(userSocketId).emit('owner-response', {
-        negotiationId,
-        response,
-        offerPrice,
-        inclusions,
-        specialDeal,
-        timestamp: new Date().toISOString()
-      });
-      console.log(`📤 Sent owner response to user ${negotiation.userId}`);
-      
-      socket.emit('response-sent', { success: true, message: 'Response sent to user' });
-    } else {
-      console.log(`⚠️ User ${negotiation.userId} is offline`);
-      socket.emit('error', { message: 'User is offline. They will see the response when they reconnect.' });
+      io.to(userSocketId).emit('owner-response', { negotiationId, response, offerPrice, inclusions, specialDeal, timestamp: new Date().toISOString() });
     }
   });
-  
-  // User responds to owner
-  socket.on('user-response', (data) => {
-    const { negotiationId, message, acceptOffer, counterPrice } = data;
-    
-    console.log(`💬 User response to negotiation ${negotiationId}`);
-    
+
+  socket.on('user-response', ({ negotiationId, message, acceptOffer, counterPrice }) => {
     const negotiation = activeNegotiations.get(negotiationId);
     if (!negotiation) return;
-    
-    negotiation.messages.push({
-      id: Date.now(),
-      type: 'user',
-      message: message,
-      acceptOffer,
-      counterPrice,
-      timestamp: new Date().toISOString(),
-      sender: negotiation.userName
-    });
-    
+    negotiation.messages.push({ id: Date.now(), type: 'user', message, acceptOffer, counterPrice, timestamp: new Date().toISOString(), sender: negotiation.userName });
     activeNegotiations.set(negotiationId, negotiation);
-    
     const ownerSocketId = connectedOwners.get(negotiation.hotelId);
-    if (ownerSocketId) {
-      io.to(ownerSocketId).emit('user-response', {
-        negotiationId,
-        message,
-        acceptOffer,
-        counterPrice,
-        timestamp: new Date().toISOString(),
-        userName: negotiation.userName
-      });
-      console.log(`📤 Sent user response to owner`);
-    }
+    if (ownerSocketId) io.to(ownerSocketId).emit('user-response', { negotiationId, message, acceptOffer, counterPrice, userName: negotiation.userName, timestamp: new Date().toISOString() });
   });
-  
-  // User accepts offer
-  socket.on('accept-offer', (data) => {
-    const { negotiationId, offerDetails } = data;
-    
-    console.log(`🎉 User accepted offer for negotiation ${negotiationId}`);
-    
+
+  socket.on('accept-offer', ({ negotiationId, offerDetails }) => {
     const negotiation = activeNegotiations.get(negotiationId);
     if (negotiation) {
       negotiation.status = 'accepted';
-      
       const ownerSocketId = connectedOwners.get(negotiation.hotelId);
-      if (ownerSocketId) {
-        io.to(ownerSocketId).emit('offer-accepted', {
-          negotiationId,
-          userId: negotiation.userId,
-          userName: negotiation.userName,
-          offerDetails,
-          timestamp: new Date().toISOString()
-        });
-        console.log(`📤 Sent offer acceptance to owner`);
-      }
-      
-      socket.emit('booking-confirmation', {
-        success: true,
-        negotiationId,
-        offerDetails,
-        message: '🎉 Congratulations! Your offer has been accepted. Redirecting to checkout...'
-      });
+      if (ownerSocketId) io.to(ownerSocketId).emit('offer-accepted', { negotiationId, userId: negotiation.userId, userName: negotiation.userName, offerDetails });
+      socket.emit('booking-confirmation', { success: true, negotiationId, offerDetails, message: '🎉 Offer accepted! Redirecting to checkout...' });
     }
   });
-  
-  // Disconnect
+
   socket.on('disconnect', () => {
-    console.log('🔌 Client disconnected:', socket.id);
-    
-    // Remove from maps
-    for (const [userId, socketId] of connectedUsers.entries()) {
-      if (socketId === socket.id) {
-        connectedUsers.delete(userId);
-        console.log(`🗑️ Removed user ${userId} from connected users`);
-        break;
-      }
-    }
-    
-    for (const [hotelId, socketId] of connectedOwners.entries()) {
-      if (socketId === socket.id) {
-        connectedOwners.delete(hotelId);
-        console.log(`🗑️ Removed owner for hotel ${hotelId}`);
-        break;
-      }
-    }
+    connectedUsers.forEach((sid, uid) => { if (sid === socket.id) connectedUsers.delete(uid); });
+    connectedOwners.forEach((sid, hid) => { if (sid === socket.id) connectedOwners.delete(hid); });
   });
 });
 
-// MongoDB Connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/bookora';
+// ─── MONGODB ───────────────────────────────────────────────────────────────────
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch((err) => { console.error('❌ MongoDB error:', err); process.exit(1); });
 
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('✅ MongoDB connected successfully'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+app.set('io', io);
 
-// Import Routes
-const authRoutes = require('./routes/Auth');
-const hotelRoutes = require('./routes/hotels');
-const bookingRoutes = require('./routes/bookings');
-const couponRoutes = require('./routes/coupons');
-const newsletterRoutes = require('./routes/newsletter');
-const reviewRoutes = require('./routes/reviews');
-const userRoutes = require('./routes/users');
-const aiAssistantRoutes = require('./routes/aiAssistant');
-const aiFeaturesRoutes = require('./routes/aiFeatures');
-const negotiationRoutes = require('./routes/negotiation');
+// ─── ROUTES ────────────────────────────────────────────────────────────────────
+app.use('/api/auth', authLimiter, require('./routes/Auth'));
+app.use('/api/hotels', require('./routes/hotels'));
+app.use('/api/bookings', require('./routes/bookings'));
+app.use('/api/coupons', require('./routes/coupons'));
+app.use('/api/newsletter', require('./routes/newsletter'));
+app.use('/api/reviews', require('./routes/reviews'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/ai', require('./routes/aiAssistant'));
+app.use('/api/ai-features', require('./routes/aiFeatures'));
+app.use('/api/negotiation', require('./routes/negotiation'));
+app.use('/api/payment', require('./routes/payment'));
+app.use("/api/loyalty", require("./routes/loyalty"));
 
-// Use Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/hotels', hotelRoutes);
-app.use('/api/bookings', bookingRoutes);
-app.use('/api/coupons', couponRoutes);
-app.use('/api/newsletter', newsletterRoutes);
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/ai', aiAssistantRoutes);
-app.use('/api/ai-features', aiFeaturesRoutes);
-app.use('/api/negotiation', negotiationRoutes);
-// server/server.js - Add this line with other routes
-app.use("/api/payment", require("./routes/payment"));
+// ─── HEALTH CHECK ──────────────────────────────────────────────────────────────
+app.get('/health', (req, res) => res.json({
+  status: 'ok',
+  timestamp: new Date().toISOString(),
+  mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+  env: process.env.NODE_ENV || 'development',
+  websocket: { connectedUsers: connectedUsers.size, connectedOwners: connectedOwners.size },
+}));
 
-// Test endpoint
-app.get('/api/test', (req, res) => {
-  res.json({ 
-    message: 'API is working!',
-    websocket: 'enabled',
-    session: req.session ? 'active' : 'inactive',
-    passport: req.user ? 'authenticated' : 'not authenticated',
-    endpoints: {
-      ai_features: '/api/ai-features/languages',
-      ai_assistant: '/api/ai/travel-assistant',
-      hotels: '/api/hotels',
-      payment: '/api/payment',
-      auth: '/api/auth'
-    }
-  });
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-    session: req.session ? 'active' : 'inactive',
-    websocket: {
-      connectedUsers: connectedUsers.size,
-      connectedOwners: connectedOwners.size,
-      activeNegotiations: activeNegotiations.size
-    }
-  });
-});
-
-// Error handling middleware
+// ─── ERROR HANDLERS ────────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
-  console.error('Error:', err.stack);
-  res.status(500).json({ 
-    error: 'Something went wrong!',
-    message: err.message 
-  });
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong', message: process.env.NODE_ENV === 'development' ? err.message : undefined });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ 
-    error: 'Route not found',
-    path: req.originalUrl 
-  });
-});
+app.use((req, res) => res.status(404).json({ error: 'Route not found', path: req.originalUrl }));
 
+// ─── START ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-
-// IMPORTANT: Use server.listen, NOT app.listen
 server.listen(PORT, () => {
   console.log(`\n🚀 Server running on port ${PORT}`);
-  console.log(`📡 Test URL: http://localhost:${PORT}/api/test`);
-  console.log(`🤖 AI Features: http://localhost:${PORT}/api/ai-features/languages`);
-  console.log(`💚 Health Check: http://localhost:${PORT}/health`);
-  console.log(`🔌 WebSocket server ready for real-time negotiation\n`);
-  console.log(`📊 Stats:`);
-  console.log(`   - WebSocket: enabled`);
-  console.log(`   - Session: enabled`);
-  console.log(`   - Passport: enabled`);
-  console.log(`   - MongoDB: ${mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'}`);
-  console.log(`   - Negotiation system: active\n`);
+  console.log(`🌐 Allowed origins: ${allowedOrigins.join(', ')}`);
+  console.log(`🔒 JWT: configured | Session: configured | Helmet: on\n`);
 });

@@ -1,40 +1,45 @@
 // server/middleware/auth.js
+// FIXED: No fallback secret, proper error messages
+
 const jwt = require('jsonwebtoken');
 
-module.exports = function(req, res, next) {
-  // Get token from header
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-  
-  console.log('Auth middleware - Token received:', token ? 'Yes' : 'No');
+const auth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
 
-  // Check if no token
-  if (!token) {
-    return res.status(401).json({ 
-      success: false,
-      msg: 'No token, authorization denied' 
-    });
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'No token provided' });
   }
 
-  // Verify token
+  const token = authHeader.split(' ')[1];
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key');
-    console.log('Decoded token:', JSON.stringify(decoded, null, 2));
-    
-    // IMPORTANT: Set user object with id property
-    req.user = {
-      id: decoded.id || decoded.userId || decoded._id,
-      userId: decoded.id || decoded.userId || decoded._id,
-      email: decoded.email,
-      role: decoded.role || 'user'
-    };
-    
-    console.log('User authenticated - ID:', req.user.id, 'Role:', req.user.role);
+    // FIXED: No fallback secret — if JWT_SECRET is missing, startup should fail (see server.js)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
     next();
   } catch (err) {
-    console.error('Token verification failed:', err.message);
-    res.status(401).json({ 
-      success: false,
-      msg: 'Token is not valid' 
-    });
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired, please login again' });
+    }
+    return res.status(401).json({ error: 'Invalid token' });
   }
 };
+
+// Role-based middleware factories
+const requireAdmin = (req, res, next) => {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+};
+
+const requireOwner = (req, res, next) => {
+  if (req.user?.role !== 'owner' && req.user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Owner access required' });
+  }
+  next();
+};
+
+module.exports = auth;
+module.exports.requireAdmin = requireAdmin;
+module.exports.requireOwner = requireOwner;

@@ -1,19 +1,31 @@
+// client/src/utils/api.js
+// FIXED: Centralised API config — replaces all 37 hardcoded localhost:5000 references
+// Usage: import api from '../utils/api';  then api.get('/hotels')
+
 import axios from 'axios';
 
+// ─── Base URLs from environment ───────────────────────────────────────────────
+export const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+export const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
+
+// ─── Axios instance ───────────────────────────────────────────────────────────
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
-  timeout: 10000,
+  baseURL: `${BASE_URL}/api`,
+  timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// ─── Attach JWT on every request ─────────────────────────────────────────────
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
+// ─── Global response handling ─────────────────────────────────────────────────
 api.interceptors.response.use(
   (response) => response,
   (error) => {

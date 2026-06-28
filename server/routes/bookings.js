@@ -4,6 +4,7 @@
 const express = require("express");
 const router = express.Router();
 const Booking = require("../models/Booking");
+const Loyalty = require("../models/Loyalty");
 const Hotel = require("../models/Hotel");
 const nodemailer = require("nodemailer");
 const auth = require("../middleware/auth");
