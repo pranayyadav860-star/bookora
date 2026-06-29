@@ -86,7 +86,7 @@ function MyBookings() {
     setDownloading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/bookings/invoice/${booking._id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/bookings/invoice/${booking._id}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       

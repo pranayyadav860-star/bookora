@@ -29,6 +29,7 @@ import MyBookings from './pages/MyBookings';
 import Checkout from './pages/Checkout';
 import Offers from './pages/Offers';
 import LoyaltyPoints from './pages/LoyaltyPoints';
+import Wishlist from './pages/Wishlist';
 import PaymentDetails from './pages/PaymentDetails';
 
 // Owner
@@ -107,6 +108,7 @@ function App() {
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/payment/:paymentId" element={<PaymentDetails />} />
                 <Route path="/loyalty" element={<LoyaltyPoints />} />
+                <Route path="/wishlist" element={<Wishlist />} />
 
                 {/* ── Owner ──────────────────────────────────────────── */}
                 <Route path="/owner/register" element={<OwnerRegister />} />

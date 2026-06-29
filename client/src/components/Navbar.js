@@ -1,12 +1,10 @@
 // client/src/components/Navbar.js
-// PREMIUM VERSION - Complete with All New Features + AI Integration
-
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import LanguageSelector from './LanguageSelector';
-import { 
-  UserCircleIcon, 
+import {
+  UserCircleIcon,
   ChevronDownIcon,
   HomeIcon,
   BuildingOfficeIcon,
@@ -20,9 +18,7 @@ import {
   TicketIcon,
   HeartIcon,
   GiftIcon,
-  UserGroupIcon,
   GlobeAltIcon,
-  MicrophoneIcon,
   TagIcon,
   ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
@@ -31,10 +27,8 @@ function Navbar() {
   const [menu, setMenu] = useState(false);
   const [adminDropdownOpen, setAdminDropdownOpen] = useState(false);
   const [registerDropdownOpen, setRegisterDropdownOpen] = useState(false);
-  const [aiToolsOpen, setAiToolsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const registerDropdownRef = useRef(null);
-  const aiToolsRef = useRef(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -45,9 +39,6 @@ function Navbar() {
       }
       if (registerDropdownRef.current && !registerDropdownRef.current.contains(event.target)) {
         setRegisterDropdownOpen(false);
-      }
-      if (aiToolsRef.current && !aiToolsRef.current.contains(event.target)) {
-        setAiToolsOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -69,8 +60,8 @@ function Navbar() {
   return (
     <nav className="sticky top-0 z-[9999] bg-gradient-to-r from-gray-900 via-gray-900 to-black border-b border-yellow-500/30 shadow-2xl">
       <div className="max-w-7xl mx-auto px-4 lg:px-6 h-[72px] flex items-center justify-between">
-        
-        {/* CUSTOM BOOKORA LOGO */}
+
+        {/* LOGO */}
         <Link to="/" className="flex items-center gap-3 group" onClick={() => setMenu(false)}>
           <div className="relative">
             <div className="absolute inset-0 bg-yellow-500 blur-xl opacity-60 group-hover:opacity-100 transition duration-500 rounded-2xl"></div>
@@ -92,7 +83,8 @@ function Navbar() {
 
         {/* DESKTOP MENU */}
         <div className="hidden lg:flex items-center gap-1">
-          
+
+          {/* Home */}
           <Link to="/" className="group relative px-4 py-2 rounded-xl text-gray-300 text-sm font-medium hover:text-yellow-400 transition-all duration-300">
             <span className="relative z-10 flex items-center gap-2">
               <HomeIcon className="h-4 w-4" />
@@ -100,7 +92,8 @@ function Navbar() {
             </span>
             <span className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition duration-300"></span>
           </Link>
-          
+
+          {/* Hotels */}
           <Link to="/hotels" className="group relative px-4 py-2 rounded-xl text-gray-300 text-sm font-medium hover:text-yellow-400 transition-all duration-300">
             <span className="relative z-10 flex items-center gap-2">
               <BuildingOfficeIcon className="h-4 w-4" />
@@ -108,6 +101,8 @@ function Navbar() {
             </span>
             <span className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition duration-300"></span>
           </Link>
+
+          {/* Offers */}
           <Link to="/offers" className="group relative px-4 py-2 rounded-xl text-gray-300 text-sm font-medium hover:text-yellow-400 transition-all duration-300">
             <span className="relative z-10 flex items-center gap-2">
               <TagIcon className="h-4 w-4" />
@@ -116,61 +111,57 @@ function Navbar() {
             <span className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition duration-300"></span>
           </Link>
 
-          {/* ========== AI TOOLS DROPDOWN - NEW ========== */}
-          <div className="relative" ref={aiToolsRef}>
-            <button
-              onClick={() => setAiToolsOpen(!aiToolsOpen)}
-              className="group relative px-4 py-2 rounded-xl text-gray-300 text-sm font-medium hover:text-yellow-400 transition-all duration-300 flex items-center gap-2"
-            >
-              <span className="relative z-10 flex items-center gap-2">
-                <ChatBubbleLeftRightIcon className="h-4 w-4" />
-                AI Tools
-                <ChevronDownIcon className={`h-3 w-3 transition-transform duration-300 ${aiToolsOpen ? "rotate-180" : ""}`} />
-              </span>
-              <span className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition duration-300"></span>
-            </button>
-            
-            {aiToolsOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-gray-900 backdrop-blur-xl border border-yellow-500/20 rounded-2xl shadow-2xl py-2 z-50 overflow-hidden">
-                <Link to="/group-planner" onClick={() => setAiToolsOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200">
-                  <UsersIcon className="h-4 w-4" />
-                  Group Travel Planner
-                </Link>
-                <div className="border-t border-gray-800 my-1"></div>
-                <div className="px-4 py-2 text-xs text-gray-500">AI Features Available:</div>
-                <div className="px-4 py-1.5 text-xs text-gray-400">• Smart Itinerary Builder</div>
-                <div className="px-4 py-1.5 text-xs text-gray-400">• Price Comparison</div>
-                <div className="px-4 py-1.5 text-xs text-gray-400">• Weather Integration</div>
-                <div className="px-4 py-1.5 text-xs text-gray-400">• Negotiation Bot</div>
-              </div>
-            )}
-          </div>
-
-          {/* My Bookings Link */}
+          {/* Regular User Links */}
           {isRegularUser && (
-            <Link to="/mybookings" className="group relative px-4 py-2 rounded-xl text-gray-300 text-sm font-medium hover:text-yellow-400 transition-all duration-300">
-              <span className="relative z-10 flex items-center gap-2">
-                <CalendarIcon className="h-4 w-4" />
-                My Bookings
-              </span>
-              <span className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition duration-300"></span>
-            </Link>
+            <>
+              <Link to="/mybookings" className="group relative px-4 py-2 rounded-xl text-gray-300 text-sm font-medium hover:text-yellow-400 transition-all duration-300">
+                <span className="relative z-10 flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  My Bookings
+                </span>
+                <span className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition duration-300"></span>
+              </Link>
+              <Link to="/wishlist" className="group relative px-4 py-2 rounded-xl text-gray-300 text-sm font-medium hover:text-yellow-400 transition-all duration-300">
+                <span className="relative z-10 flex items-center gap-2">
+                  <HeartIcon className="h-4 w-4" />
+                  Wishlist
+                </span>
+                <span className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition duration-300"></span>
+              </Link>
+              <Link to="/loyalty" className="group relative px-4 py-2 rounded-xl text-gray-300 text-sm font-medium hover:text-yellow-400 transition-all duration-300">
+                <span className="relative z-10 flex items-center gap-2">
+                  <GiftIcon className="h-4 w-4" />
+                  Loyalty
+                </span>
+                <span className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition duration-300"></span>
+              </Link>
+            </>
           )}
 
-          {/* Owner Dashboard Link */}
+          {/* Owner Links */}
           {isOwner && (
             <>
               <Link to="/owner/dashboard" className="group relative px-4 py-2 rounded-xl text-gray-300 text-sm font-medium hover:text-yellow-400 transition-all duration-300">
                 <span className="relative z-10 flex items-center gap-2">
                   <BuildingOfficeIcon className="h-4 w-4" />
-                  My Dashboard
+                  Dashboard
                 </span>
                 <span className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition duration-300"></span>
               </Link>
-              <Link to="/owner/negotiations" className="...">
-      <ChatBubbleLeftRightIcon className="h-4 w-4" />
-      Negotiations
-    </Link>
+              <Link to="/owner/hotels" className="group relative px-4 py-2 rounded-xl text-gray-300 text-sm font-medium hover:text-yellow-400 transition-all duration-300">
+                <span className="relative z-10 flex items-center gap-2">
+                  <BuildingOfficeIcon className="h-4 w-4" />
+                  My Hotels
+                </span>
+                <span className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition duration-300"></span>
+              </Link>
+              <Link to="/owner/bookings" className="group relative px-4 py-2 rounded-xl text-gray-300 text-sm font-medium hover:text-yellow-400 transition-all duration-300">
+                <span className="relative z-10 flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  Bookings
+                </span>
+                <span className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition duration-300"></span>
+              </Link>
               
               <Link to="/owner/coupons" className="group relative px-4 py-2 rounded-xl text-gray-300 text-sm font-medium hover:text-yellow-400 transition-all duration-300">
                 <span className="relative z-10 flex items-center gap-2">
@@ -196,7 +187,7 @@ function Navbar() {
                 </span>
                 <span className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition duration-300"></span>
               </button>
-              
+
               {adminDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-64 bg-gray-900 backdrop-blur-xl border border-yellow-500/20 rounded-2xl shadow-2xl py-2 z-50 overflow-hidden">
                   <Link to="/admin/dashboard" onClick={() => setAdminDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200">
@@ -219,19 +210,25 @@ function Navbar() {
                     <TicketIcon className="h-4 w-4" />
                     Coupons
                   </Link>
+                  <Link to="/admin/newsletter" onClick={() => setAdminDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200">
+                    <GlobeAltIcon className="h-4 w-4" />
+                    Newsletter
+                  </Link>
                   <Link to="/admin/owners" onClick={() => setAdminDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200">
                     <EyeIcon className="h-4 w-4" />
                     View All Owners
                   </Link>
-                  <Link to="/owner/dashboard" onClick={() => setAdminDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200 border-t border-gray-800 mt-1 pt-2">
+                  <div className="border-t border-gray-800 my-1 mx-3"></div>
+                  <Link to="/owner/dashboard" onClick={() => setAdminDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200">
                     <EyeIcon className="h-4 w-4" />
-                    Owner View
+                    Switch to Owner View
                   </Link>
                 </div>
               )}
             </div>
           )}
-           {/* Language Selector - NEW */}
+
+          {/* Language Selector */}
           <div className="ml-2">
             <LanguageSelector />
           </div>
@@ -242,7 +239,6 @@ function Navbar() {
               <Link to="/login" className="px-5 py-2 rounded-xl text-gray-300 text-sm font-medium hover:text-yellow-400 transition-all duration-300">
                 Login
               </Link>
-              
               <div className="relative" ref={registerDropdownRef}>
                 <button
                   onClick={() => setRegisterDropdownOpen(!registerDropdownOpen)}
@@ -252,7 +248,6 @@ function Navbar() {
                   Register
                   <ChevronDownIcon className={`h-3 w-3 transition-transform duration-300 ${registerDropdownOpen ? "rotate-180" : ""}`} />
                 </button>
-                
                 {registerDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-56 bg-gray-900 backdrop-blur-xl border border-yellow-500/20 rounded-2xl shadow-2xl py-2 z-50">
                     <Link to="/register" onClick={() => setRegisterDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200">
@@ -269,22 +264,19 @@ function Navbar() {
             </div>
           ) : (
             <div className="flex items-center gap-3 ml-4">
-              <div className="group relative">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-yellow-500/15 to-yellow-600/15 border border-yellow-500/40 backdrop-blur-sm">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-md">
-                    <span className="text-black font-bold text-xs">
-                      {user?.name?.charAt(0) || user?.email?.charAt(0) || "U"}
-                    </span>
-                  </div>
-                  <span className="text-yellow-400 text-xs font-semibold tracking-wide">
-                    {isAdmin ? "ADMIN" : isOwner ? "OWNER" : "USER"}
-                  </span>
-                  <span className="text-white text-xs font-medium">
-                    {user?.name?.split(" ")[0] || user?.email?.split("@")[0] || "User"}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-yellow-500/15 to-yellow-600/15 border border-yellow-500/40 backdrop-blur-sm">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-md">
+                  <span className="text-black font-bold text-xs">
+                    {user?.name?.charAt(0) || user?.email?.charAt(0) || "U"}
                   </span>
                 </div>
+                <span className="text-yellow-400 text-xs font-semibold tracking-wide">
+                  {isAdmin ? "ADMIN" : isOwner ? "OWNER" : "USER"}
+                </span>
+                <span className="text-white text-xs font-medium">
+                  {user?.name?.split(" ")[0] || user?.email?.split("@")[0] || "User"}
+                </span>
               </div>
-              
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 px-4 py-1.5 rounded-xl font-medium text-white text-sm bg-gradient-to-r from-red-600/80 to-red-700/80 hover:from-red-600 hover:to-red-700 transition-all duration-300 shadow-lg hover:shadow-red-500/25"
@@ -297,8 +289,8 @@ function Navbar() {
         </div>
 
         {/* MOBILE BUTTON */}
-        <button 
-          onClick={() => setMenu(!menu)} 
+        <button
+          onClick={() => setMenu(!menu)}
           className="lg:hidden w-10 h-10 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-bold flex items-center justify-center hover:shadow-lg transition-all duration-300"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -307,9 +299,10 @@ function Navbar() {
         </button>
       </div>
 
-      {/* MOBILE MENU - WITH NEW AI FEATURES */}
+      {/* MOBILE MENU */}
       {menu && (
         <div className="lg:hidden bg-gray-900 border-t border-yellow-500/20 px-4 pb-6 pt-4 space-y-1 max-h-[80vh] overflow-y-auto">
+
           {/* Basic Links */}
           <Link to="/" onClick={() => setMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200">
             <HomeIcon className="h-5 w-5" />
@@ -319,23 +312,17 @@ function Navbar() {
             <BuildingOfficeIcon className="h-5 w-5" />
             Hotels
           </Link>
-
-          {/* AI Tools Section - Mobile */}
-          <div className="px-4 py-2 text-yellow-400 text-xs font-semibold uppercase tracking-wider border-t border-yellow-500/20 mt-2 pt-3">
-            AI Tools
-          </div>
-          <Link to="/group-planner" onClick={() => setMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200 pl-8">
-            <UsersIcon className="h-5 w-5" />
-            Group Travel Planner
+          <Link to="/offers" onClick={() => setMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200">
+            <TagIcon className="h-5 w-5" />
+            Offers
           </Link>
-          <div className="px-4 py-2 text-xs text-gray-500">✨ AI Features: Itinerary Builder | Price Compare | Weather | Negotiation</div>
 
-          {/* Language Selector - Mobile */}
+          {/* Language Selector Mobile */}
           <div className="px-4 py-2">
             <LanguageSelector />
           </div>
 
-          {/* Regular User Mobile Menu */}
+          {/* Regular User Mobile */}
           {isRegularUser && (
             <>
               <div className="px-4 py-2 text-yellow-400 text-xs font-semibold uppercase tracking-wider border-t border-yellow-500/20 mt-2 pt-3">
@@ -345,10 +332,18 @@ function Navbar() {
                 <CalendarIcon className="h-5 w-5" />
                 My Bookings
               </Link>
+              <Link to="/wishlist" onClick={() => setMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200 pl-8">
+                <HeartIcon className="h-5 w-5" />
+                Wishlist
+              </Link>
+              <Link to="/loyalty" onClick={() => setMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200 pl-8">
+                <GiftIcon className="h-5 w-5" />
+                Loyalty Points
+              </Link>
             </>
           )}
 
-          {/* Owner Mobile Menu */}
+          {/* Owner Mobile */}
           {isOwner && (
             <>
               <div className="px-4 py-2 text-yellow-400 text-xs font-semibold uppercase tracking-wider border-t border-yellow-500/20 mt-2 pt-3">
@@ -356,8 +351,17 @@ function Navbar() {
               </div>
               <Link to="/owner/dashboard" onClick={() => setMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200 pl-8">
                 <BuildingOfficeIcon className="h-5 w-5" />
-                My Dashboard
+                Dashboard
               </Link>
+              <Link to="/owner/hotels" onClick={() => setMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200 pl-8">
+                <BuildingOfficeIcon className="h-5 w-5" />
+                My Hotels
+              </Link>
+              <Link to="/owner/bookings" onClick={() => setMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200 pl-8">
+                <CalendarIcon className="h-5 w-5" />
+                Bookings
+              </Link>
+              
               <Link to="/owner/coupons" onClick={() => setMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200 pl-8">
                 <TicketIcon className="h-5 w-5" />
                 Coupons
@@ -365,7 +369,7 @@ function Navbar() {
             </>
           )}
 
-          {/* Admin Mobile Menu */}
+          {/* Admin Mobile */}
           {isAdmin && (
             <>
               <div className="px-4 py-2 text-yellow-400 text-xs font-semibold uppercase tracking-wider border-t border-yellow-500/20 mt-2 pt-3">
@@ -391,14 +395,22 @@ function Navbar() {
                 <TicketIcon className="h-5 w-5" />
                 Coupons
               </Link>
+              <Link to="/admin/newsletter" onClick={() => setMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200 pl-8">
+                <GlobeAltIcon className="h-5 w-5" />
+                Newsletter
+              </Link>
+              <Link to="/admin/owners" onClick={() => setMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200 pl-8">
+                <EyeIcon className="h-5 w-5" />
+                View All Owners
+              </Link>
               <Link to="/owner/dashboard" onClick={() => setMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 transition-all duration-200 pl-8">
                 <EyeIcon className="h-5 w-5" />
-                Owner View
+                Switch to Owner View
               </Link>
             </>
           )}
 
-          {/* Auth Section for Mobile */}
+          {/* Auth Mobile */}
           {!isLoggedIn ? (
             <>
               <div className="px-4 py-2 text-yellow-400 text-xs font-semibold uppercase tracking-wider border-t border-yellow-500/20 mt-2 pt-3">
@@ -412,7 +424,6 @@ function Navbar() {
                 <BuildingOfficeIcon className="h-5 w-5" />
                 Hotel Owner
               </Link>
-              
               <Link to="/login" onClick={() => setMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-yellow-500/10 text-yellow-400 mt-2">
                 Login
               </Link>
@@ -438,7 +449,7 @@ function Navbar() {
               </div>
               <button
                 onClick={handleLogout}
-                className="w-full text-center mx-4 px-4 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 transition-all duration-200"
+                className="w-full text-center px-4 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 transition-all duration-200"
               >
                 Logout
               </button>

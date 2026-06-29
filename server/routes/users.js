@@ -229,4 +229,33 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
+// Wishlist check
+router.get('/wishlist/check/:hotelId', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    const isWishlisted = user.wishlist?.includes(req.params.hotelId) || false;
+    res.json({ isWishlisted });
+  } catch (err) {
+    res.json({ isWishlisted: false });
+  }
+});
+
+// Wishlist toggle
+router.post('/wishlist/toggle/:hotelId', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user.wishlist) user.wishlist = [];
+    const idx = user.wishlist.indexOf(req.params.hotelId);
+    if (idx === -1) {
+      user.wishlist.push(req.params.hotelId);
+    } else {
+      user.wishlist.splice(idx, 1);
+    }
+    await user.save();
+    res.json({ isWishlisted: idx === -1 });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update wishlist' });
+  }
+});
+
 module.exports = router;

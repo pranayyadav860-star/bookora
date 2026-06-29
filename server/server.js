@@ -211,6 +211,7 @@ app.use('/api/coupons', require('./routes/coupons'));
 app.use('/api/newsletter', require('./routes/newsletter'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/wishlist', require('./routes/wishlist'));
 app.use('/api/ai', require('./routes/aiAssistant'));
 app.use('/api/ai-features', require('./routes/aiFeatures'));
 app.use('/api/negotiation', require('./routes/negotiation'));
