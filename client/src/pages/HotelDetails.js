@@ -8,6 +8,7 @@ import PriceNegotiator from '../components/PriceNegotiator';
 import ItineraryPlanner from '../components/ItineraryPlanner';
 import WeatherWidget from '../components/WeatherWidget';
 import UserNegotiationBot from '../components/UserNegotiationBot';
+import ReviewSection from '../components/ReviewSection';
 import {
   StarIcon,
   MapPinIcon,
@@ -438,13 +439,7 @@ function HotelDetails() {
             )}
 
             {/* Guest Reviews */}
-            {hotel.reviews && hotel.reviews.length > 0 && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <h2 className="text-2xl font-bold mb-4">Guest Reviews</h2>
-                <div className="flex items-center gap-4 mb-6"><div className="text-center bg-yellow-50 rounded-xl p-3"><div className="text-4xl font-bold text-yellow-600">{hotel.rating}</div><div className="flex text-yellow-400 justify-center">{"★".repeat(Math.floor(hotel.rating))}{"☆".repeat(5 - Math.floor(hotel.rating))}</div><div className="text-xs text-gray-500 mt-1">{hotel.reviews.length} reviews</div></div></div>
-                <div className="space-y-4">{hotel.reviews.slice(0, 3).map((review, idx) => (<div key={idx} className="border-b pb-4 last:border-0"><div className="flex items-center gap-2 mb-2"><div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center"><span className="text-yellow-600 font-bold">{review.name?.charAt(0)}</span></div><div><p className="font-semibold">{review.name}</p><div className="flex text-yellow-400 text-sm">{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</div></div></div><p className="text-gray-600 text-sm">{review.comment}</p></div>))}</div>
-              </div>
-            )}
+      <ReviewSection hotelId={id} hotelOwnerId={hotel?.ownerId} />
           </div>
 
           {/* RIGHT COLUMN - Booking Card with integrated Weather & Price Negotiator */}
