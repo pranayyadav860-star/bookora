@@ -128,7 +128,7 @@ function AdminHotels() {
       setLoading(true);
       const token = localStorage.getItem("token");
       if (!token) return;
-      const res = await fetch("http://localhost:5000/api/hotels", {
+      const res = await fetch("https://bookora-server-22ox.onrender.com/api/hotels", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 401) {
@@ -193,7 +193,7 @@ function AdminHotels() {
   const deleteImageFromCloudinary = async (imageUrl) => {
     try {
       const token = localStorage.getItem("token");
-      await fetch("http://localhost:5000/api/hotels/delete-image", {
+      await fetch("https://bookora-server-22ox.onrender.com/api/hotels/delete-image", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -238,7 +238,7 @@ function AdminHotels() {
       fd.append("images", small);
     }
     const token = localStorage.getItem("token");
-    const res = await fetch("http://localhost:5000/api/hotels/upload", {
+    const res = await fetch("https://bookora-server-22ox.onrender.com/api/hotels/upload", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: fd,
@@ -263,7 +263,7 @@ function AdminHotels() {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/hotels/upload-room", {
+      const res = await fetch("https://bookora-server-22ox.onrender.com/api/hotels/upload-room", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: fd,
@@ -342,8 +342,8 @@ function AdminHotels() {
     }
 
     const url = editId
-      ? `http://localhost:5000/api/hotels/update/${editId}`
-      : "http://localhost:5000/api/hotels/add";
+      ? `https://bookora-server-22ox.onrender.com/api/hotels/update/${editId}`
+      : "https://bookora-server-22ox.onrender.com/api/hotels/add";
     const method = editId ? "PUT" : "POST";
 
     const token = localStorage.getItem("token");
@@ -382,7 +382,7 @@ function AdminHotels() {
     if (!window.confirm("Delete this hotel? This cannot be undone!")) return;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://localhost:5000/api/hotels/delete/${id}`, {
+      const res = await fetch(`https://bookora-server-22ox.onrender.com/api/hotels/delete/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

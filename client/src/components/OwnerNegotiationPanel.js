@@ -23,7 +23,7 @@ const OwnerNegotiationPanel = ({ hotelId, hotelName }) => {
     const token = localStorage.getItem('token');
     console.log('Owner connecting to WebSocket server...');
     
-    const newSocket = io('http://localhost:5000', {
+    const newSocket = io('https://bookora-server-22ox.onrender.com', {
       auth: { token },
       transports: ['websocket', 'polling']
     });

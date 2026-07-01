@@ -17,10 +17,10 @@ function OwnerAnalytics() {
     try {
       const token = localStorage.getItem("token");
       const [hotelsRes, bookingsRes] = await Promise.all([
-        fetch("http://localhost:5000/api/hotels/owner/my-hotels", {
+        fetch("https://bookora-server-22ox.onrender.com/api/hotels/owner/my-hotels", {
           headers: { "Authorization": `Bearer ${token}` }
         }),
-        fetch("http://localhost:5000/api/hotels/owner/my-bookings", {
+        fetch("https://bookora-server-22ox.onrender.com/api/hotels/owner/my-bookings", {
           headers: { "Authorization": `Bearer ${token}` }
         })
       ]);

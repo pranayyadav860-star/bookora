@@ -40,7 +40,7 @@ function AdminSimulateOwner() {
         const token = localStorage.getItem("token");
         
         console.log("Fetching users from API...");
-        const res = await fetch("http://localhost:5000/api/users", {
+        const res = await fetch("https://bookora-server-22ox.onrender.com/api/users", {
           headers: { "Authorization": `Bearer ${token}` }
         });
         
@@ -87,7 +87,7 @@ function AdminSimulateOwner() {
         console.log(`Loading hotels for owner: ${selectedOwner.name} (${selectedOwner._id})`);
         
         // Get owner's hotels
-        const hotelsRes = await fetch(`http://localhost:5000/api/hotels/owner/${selectedOwner._id}/hotels`, {
+        const hotelsRes = await fetch(`https://bookora-server-22ox.onrender.com/api/hotels/owner/${selectedOwner._id}/hotels`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         
@@ -101,7 +101,7 @@ function AdminSimulateOwner() {
         }
         
         // Get owner's bookings
-        const bookingsRes = await fetch(`http://localhost:5000/api/hotels/owner/${selectedOwner._id}/bookings`, {
+        const bookingsRes = await fetch(`https://bookora-server-22ox.onrender.com/api/hotels/owner/${selectedOwner._id}/bookings`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         

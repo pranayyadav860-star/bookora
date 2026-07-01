@@ -64,7 +64,7 @@ function OwnerRegister() {
       const requestBody = registrationMethod === "phone"
         ? { phone: formData.phone.trim() }
         : { email: formData.email.trim() };
-      const response = await fetch("http://localhost:5000/api/auth/send-otp", {
+      const response = await fetch("https://bookora-server-22ox.onrender.com/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
@@ -98,7 +98,7 @@ function OwnerRegister() {
       const requestBody = registrationMethod === "phone"
         ? { phone: formData.phone.trim(), otp: otpCode }
         : { email: formData.email.trim(), otp: otpCode };
-      const response = await fetch("http://localhost:5000/api/auth/verify-otp", {
+      const response = await fetch("https://bookora-server-22ox.onrender.com/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
@@ -151,7 +151,7 @@ function OwnerRegister() {
     fd.append("verificationToken", verificationToken);
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/register-owner-secure", {
+      const response = await fetch("https://bookora-server-22ox.onrender.com/api/auth/register-owner-secure", {
         method: "POST",
         body: fd, // multipart/form-data
       });

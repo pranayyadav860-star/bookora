@@ -173,7 +173,7 @@ function Register() {
       const requestBody = registrationMethod === "phone"
         ? { phone: formData.phone.trim() }
         : { email: formData.email.trim() };
-      const response = await fetch("http://localhost:5000/api/auth/send-otp", {
+      const response = await fetch("https://bookora-server-22ox.onrender.com/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
@@ -204,7 +204,7 @@ function Register() {
       const requestBody = registrationMethod === "phone"
         ? { phone: formData.phone.trim(), otp: otpCode }
         : { email: formData.email.trim(), otp: otpCode };
-      const response = await fetch("http://localhost:5000/api/auth/verify-otp", {
+      const response = await fetch("https://bookora-server-22ox.onrender.com/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
@@ -283,7 +283,7 @@ function Register() {
         requestBody[key] === undefined && delete requestBody[key]
       );
 
-      const response = await fetch("http://localhost:5000/api/auth/register", {
+      const response = await fetch("https://bookora-server-22ox.onrender.com/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
@@ -309,7 +309,7 @@ function Register() {
   };
 
   const handleSocialRegister = (provider) => {
-    window.location.href = `http://localhost:5000/api/auth/${provider}`;
+    window.location.href = `https://bookora-server-22ox.onrender.com/api/auth/${provider}`;
   };
 
   const passwordStrength = getPasswordStrengthText();

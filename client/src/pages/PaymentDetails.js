@@ -33,7 +33,7 @@ function PaymentDetails() {
       const token = localStorage.getItem("token");
       
       // First, find booking with this payment ID
-      const bookingsRes = await fetch("http://localhost:5000/api/bookings/my-bookings", {
+      const bookingsRes = await fetch("https://bookora-server-22ox.onrender.com/api/bookings/my-bookings", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const bookings = await bookingsRes.json();
@@ -44,7 +44,7 @@ function PaymentDetails() {
       }
       
       // Fetch payment details from Razorpay
-      const paymentRes = await fetch(`http://localhost:5000/api/payment/details/${paymentId}`, {
+      const paymentRes = await fetch(`https://bookora-server-22ox.onrender.com/api/payment/details/${paymentId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       

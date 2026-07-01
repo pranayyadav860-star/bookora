@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/ai-features';
+const API_URL = 'https://bookora-server-22ox.onrender.com/api/ai-features';
 
 class AIService {
   // Get weather for a specific city

@@ -57,7 +57,7 @@ const NegotiationBot = ({
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/negotiation/start', {
+      const response = await fetch('https://bookora-server-22ox.onrender.com/api/negotiation/start', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -205,7 +205,7 @@ const NegotiationBot = ({
     ]);
     
     try {
-      const response = await fetch(`http://localhost:5000/api/negotiation/counter/${negotiation?.sessionId}`, {
+      const response = await fetch(`https://bookora-server-22ox.onrender.com/api/negotiation/counter/${negotiation?.sessionId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

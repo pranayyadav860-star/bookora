@@ -64,9 +64,9 @@ function AdminDashboard() {
 
       // Fetch all data with proper error handling
       const [hotelsRes, bookingsRes, usersRes] = await Promise.all([
-        fetch("http://localhost:5000/api/hotels", { headers }),
-        fetch("http://localhost:5000/api/bookings", { headers }),
-        fetch("http://localhost:5000/api/users", { headers })
+        fetch("https://bookora-server-22ox.onrender.com/api/hotels", { headers }),
+        fetch("https://bookora-server-22ox.onrender.com/api/bookings", { headers }),
+        fetch("https://bookora-server-22ox.onrender.com/api/users", { headers })
       ]);
 
       // Check if responses are ok

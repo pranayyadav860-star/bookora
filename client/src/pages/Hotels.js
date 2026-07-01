@@ -35,7 +35,7 @@ function Hotels() {
 
   // Load hotels
   useEffect(() => {
-    fetch("http://localhost:5000/api/hotels")
+    fetch("https://bookora-server-22ox.onrender.com/api/hotels")
       .then((res) => res.json())
       .then((data) => {
         setHotels(data);

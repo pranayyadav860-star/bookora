@@ -103,7 +103,7 @@ function Checkout() {
     
     setCouponApplying(true);
     try {
-      const response = await fetch("http://localhost:5000/api/coupons/validate", {
+      const response = await fetch("https://bookora-server-22ox.onrender.com/api/coupons/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -201,7 +201,7 @@ function Checkout() {
     try {
       console.log("📝 Creating booking...", bookingId);
       
-      const response = await fetch("http://localhost:5000/api/bookings/add", {
+      const response = await fetch("https://bookora-server-22ox.onrender.com/api/bookings/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(bookingData)

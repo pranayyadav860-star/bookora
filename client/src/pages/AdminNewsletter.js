@@ -33,7 +33,7 @@ function AdminNewsletter() {
   const loadSubscribers = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/newsletter/subscribers", {
+      const res = await fetch("https://bookora-server-22ox.onrender.com/api/newsletter/subscribers", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await res.json();
@@ -54,7 +54,7 @@ function AdminNewsletter() {
     setSending(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/newsletter/send-bulk", {
+      const res = await fetch("https://bookora-server-22ox.onrender.com/api/newsletter/send-bulk", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

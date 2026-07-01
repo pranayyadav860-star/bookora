@@ -91,7 +91,7 @@ function OwnerCoupons() {
   const loadHotels = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/hotels/owner/my-hotels", {
+      const res = await fetch("https://bookora-server-22ox.onrender.com/api/hotels/owner/my-hotels", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await res.json();
@@ -106,7 +106,7 @@ const loadCoupons = async () => {
   try {
     const token = localStorage.getItem("token");
     // Use the new endpoint that returns ONLY owner's own coupons
-    const res = await fetch("http://localhost:5000/api/coupons/owner/my-coupons", {
+    const res = await fetch("https://bookora-server-22ox.onrender.com/api/coupons/owner/my-coupons", {
       headers: { "Authorization": `Bearer ${token}` }
     });
     
@@ -187,7 +187,7 @@ const loadCoupons = async () => {
         couponType: newCoupon.couponType
       };
       
-      const response = await fetch("http://localhost:5000/api/coupons/create", {
+      const response = await fetch("https://bookora-server-22ox.onrender.com/api/coupons/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -220,7 +220,7 @@ const loadCoupons = async () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/coupons/delete/${id}`, {
+      const response = await fetch(`https://bookora-server-22ox.onrender.com/api/coupons/delete/${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });

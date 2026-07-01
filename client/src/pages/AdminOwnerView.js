@@ -37,7 +37,7 @@ function AdminOwnerView() {
   const loadOwners = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/users", {
+      const res = await fetch("https://bookora-server-22ox.onrender.com/api/users", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -61,7 +61,7 @@ function AdminOwnerView() {
     setLoadingHotels(prev => ({ ...prev, [ownerId]: true }));
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/hotels/owner/${ownerId}/hotels`, {
+      const res = await fetch(`https://bookora-server-22ox.onrender.com/api/hotels/owner/${ownerId}/hotels`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -78,7 +78,7 @@ function AdminOwnerView() {
   const loadOwnerBookings = async (ownerId) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/hotels/owner/${ownerId}/bookings`, {
+      const res = await fetch(`https://bookora-server-22ox.onrender.com/api/hotels/owner/${ownerId}/bookings`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       

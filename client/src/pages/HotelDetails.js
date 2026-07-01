@@ -96,7 +96,7 @@ function HotelDetails() {
     const fetchHotel = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`http://localhost:5000/api/hotels/${id}`);
+        const res = await fetch(`https://bookora-server-22ox.onrender.com/api/hotels/${id}`);
         if (!res.ok) { setError("Hotel not found"); return; }
         const data = await res.json();
         setHotel(data);
@@ -112,7 +112,7 @@ function HotelDetails() {
 
   const loadHotelCoupons = async (hotelData) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/coupons/hotel/${hotelData._id}`);
+      const response = await fetch(`https://bookora-server-22ox.onrender.com/api/coupons/hotel/${hotelData._id}`);
       if (response.ok) {
         const hotelCoupons = await response.json();
         setCoupons(hotelCoupons);
@@ -135,7 +135,7 @@ function HotelDetails() {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/wishlist/check/${id}`, {
+      const response = await fetch(`https://bookora-server-22ox.onrender.com/api/wishlist/check/${id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -149,7 +149,7 @@ function HotelDetails() {
     if (!token) { navigate('/login'); return; }
     setWishlistLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/wishlist/add/${id}`, {
+      const response = await fetch(`https://bookora-server-22ox.onrender.com/api/wishlist/add/${id}`, {
         method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
       if (response.ok) { setIsInWishlist(true); showToast('✓ Added to wishlist!', 'success'); }
@@ -164,7 +164,7 @@ function HotelDetails() {
     if (!token) return;
     setWishlistLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/wishlist/remove/${id}`, {
+      const response = await fetch(`https://bookora-server-22ox.onrender.com/api/wishlist/remove/${id}`, {
         method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) { setIsInWishlist(false); showToast('✓ Removed from wishlist', 'success'); }

@@ -12,7 +12,7 @@ function Offers() {
   useEffect(() => {
     const fetchCoupons = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/coupons/active");
+        const response = await fetch("https://bookora-server-22ox.onrender.com/api/coupons/active");
         const data = await response.json();
         setCoupons(Array.isArray(data) ? data : []);
       } catch (error) {

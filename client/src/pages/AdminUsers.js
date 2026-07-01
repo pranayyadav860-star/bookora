@@ -56,7 +56,7 @@ function AdminUsers() {
       setLoading(true);
       const token = localStorage.getItem("token");
       
-      const res = await fetch("http://localhost:5000/api/users", {
+      const res = await fetch("https://bookora-server-22ox.onrender.com/api/users", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -85,7 +85,7 @@ function AdminUsers() {
   const updateUserRole = async (userId, newRole) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/users/role/${userId}`, {
+      const res = await fetch(`https://bookora-server-22ox.onrender.com/api/users/role/${userId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -117,7 +117,7 @@ function AdminUsers() {
     
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/users/${userId}`, {
+      const res = await fetch(`https://bookora-server-22ox.onrender.com/api/users/${userId}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -142,7 +142,7 @@ function AdminUsers() {
     
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/auth/make-admin/${adminEmail}`, {
+      const res = await fetch(`https://bookora-server-22ox.onrender.com/api/auth/make-admin/${adminEmail}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

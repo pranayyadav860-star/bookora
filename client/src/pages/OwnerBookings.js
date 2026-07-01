@@ -33,7 +33,7 @@ function OwnerBookings() {
   const loadBookings = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/hotels/owner/my-bookings", {
+      const res = await fetch("https://bookora-server-22ox.onrender.com/api/hotels/owner/my-bookings", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await res.json();
@@ -55,7 +55,7 @@ function OwnerBookings() {
       const token = localStorage.getItem("token");
       
       // Send cancellation request to backend
-const response = await fetch(`http://localhost:5000/api/bookings/cancel-by-owner/${selectedBooking._id}`, {
+const response = await fetch(`https://bookora-server-22ox.onrender.com/api/bookings/cancel-by-owner/${selectedBooking._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

@@ -165,7 +165,7 @@ const AITravelAssistant = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:5000/api/ai/travel-assistant', {
+      const response = await axios.post('https://bookora-server-22ox.onrender.com/api/ai/travel-assistant', {
         query: query,
         language: selectedLanguage
       }, {

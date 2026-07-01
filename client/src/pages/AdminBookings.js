@@ -70,7 +70,7 @@ function AdminBookings() {
       setLoading(true);
       const token = localStorage.getItem("token");
       
-      const bookingsRes = await fetch("http://localhost:5000/api/bookings", {
+      const bookingsRes = await fetch("https://bookora-server-22ox.onrender.com/api/bookings", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -83,7 +83,7 @@ function AdminBookings() {
       const bookingsData = await bookingsRes.json();
       setBookings(Array.isArray(bookingsData) ? bookingsData : []);
       
-      const hotelsRes = await fetch("http://localhost:5000/api/hotels", {
+      const hotelsRes = await fetch("https://bookora-server-22ox.onrender.com/api/hotels", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -110,7 +110,7 @@ function AdminBookings() {
     setActionLoading(prev => ({ ...prev, [id]: true }));
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/bookings/update/${id}`, {
+      const res = await fetch(`https://bookora-server-22ox.onrender.com/api/bookings/update/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -138,7 +138,7 @@ function AdminBookings() {
     setIsDeleting(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/bookings/delete/${bookingToDelete._id}`, {
+      const res = await fetch(`https://bookora-server-22ox.onrender.com/api/bookings/delete/${bookingToDelete._id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -169,7 +169,7 @@ function AdminBookings() {
     try {
       const token = localStorage.getItem("token");
       const deletePromises = selectedBookings.map(id =>
-        fetch(`http://localhost:5000/api/bookings/delete/${id}`, {
+        fetch(`https://bookora-server-22ox.onrender.com/api/bookings/delete/${id}`, {
           method: "DELETE",
           headers: { "Authorization": `Bearer ${token}` }
         })

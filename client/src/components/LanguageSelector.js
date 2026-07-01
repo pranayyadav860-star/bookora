@@ -19,7 +19,7 @@ const LanguageSelector = ({ onLanguageChange }) => {
 
   const fetchLanguages = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/ai-features/languages');
+      const response = await axios.get('https://bookora-server-22ox.onrender.com/api/ai-features/languages');
       if (response.data && response.data.languages) {
         setLanguages(response.data.languages);
       }

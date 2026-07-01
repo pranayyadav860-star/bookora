@@ -150,8 +150,8 @@ function Home() {
 
       try {
         const [hotelsRes, couponsRes] = await Promise.all([
-          fetch("http://localhost:5000/api/hotels",          { signal: controller.signal }),
-          fetch("http://localhost:5000/api/coupons/active",  { signal: controller.signal }),
+          fetch("https://bookora-server-22ox.onrender.com/api/hotels",          { signal: controller.signal }),
+          fetch("https://bookora-server-22ox.onrender.com/api/coupons/active",  { signal: controller.signal }),
         ]);
 
         const [hotelsData, couponsData] = await Promise.all([

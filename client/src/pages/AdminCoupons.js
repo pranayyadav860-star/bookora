@@ -88,7 +88,7 @@ function AdminCoupons() {
   const loadCoupons = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/coupons/all", {
+      const res = await fetch("https://bookora-server-22ox.onrender.com/api/coupons/all", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -118,7 +118,7 @@ function AdminCoupons() {
   const loadOwners = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/users/owners", {
+      const res = await fetch("https://bookora-server-22ox.onrender.com/api/users/owners", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
@@ -185,7 +185,7 @@ function AdminCoupons() {
         applicableHotelIds: []
       };
       
-      const response = await fetch("http://localhost:5000/api/coupons/create", {
+      const response = await fetch("https://bookora-server-22ox.onrender.com/api/coupons/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -218,7 +218,7 @@ function AdminCoupons() {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/coupons/delete/${id}`, {
+      const response = await fetch(`https://bookora-server-22ox.onrender.com/api/coupons/delete/${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -282,7 +282,7 @@ function AdminCoupons() {
   const toggleCouponStatus = async (coupon) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/coupons/toggle/${coupon._id}`, {
+      const response = await fetch(`https://bookora-server-22ox.onrender.com/api/coupons/toggle/${coupon._id}`, {
         method: "PUT",
         headers: { "Authorization": `Bearer ${token}` }
       });

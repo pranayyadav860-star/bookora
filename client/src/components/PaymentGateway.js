@@ -48,7 +48,7 @@ function PaymentGateway({ amount, bookingData, onSuccess, onError }) {
 
       // CREATE ORDER
       const orderRes = await fetch(
-        'http://localhost:5000/api/payment/razorpay/create-order',
+        'https://bookora-server-22ox.onrender.com/api/payment/razorpay/create-order',
         {
           method: 'POST',
           headers: {
@@ -94,7 +94,7 @@ function PaymentGateway({ amount, bookingData, onSuccess, onError }) {
 
             // VERIFY PAYMENT ONLY
             const verifyRes = await fetch(
-              'http://localhost:5000/api/payment/razorpay/verify',
+              'https://bookora-server-22ox.onrender.com/api/payment/razorpay/verify',
               {
                 method: 'POST',
                 headers: {

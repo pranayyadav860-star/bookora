@@ -101,7 +101,7 @@ function Login() {
     try {
       const identifier = loginMethod === "email" ? formData.email : formData.phone;
 
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch("https://bookora-server-22ox.onrender.com/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -134,7 +134,7 @@ function Login() {
   };
 
   const handleSocialLogin = (provider) => {
-    window.location.href = `http://localhost:5000/api/auth/${provider}`;
+    window.location.href = `https://bookora-server-22ox.onrender.com/api/auth/${provider}`;
   };
 
   return (

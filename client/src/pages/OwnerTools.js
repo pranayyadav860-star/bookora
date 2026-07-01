@@ -54,7 +54,7 @@ function OwnerTools() {
   const loadHotels = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/hotels/owner/my-hotels", {
+      const res = await fetch("https://bookora-server-22ox.onrender.com/api/hotels/owner/my-hotels", {
         headers: { 
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
@@ -83,7 +83,7 @@ function OwnerTools() {
   const loadBookings = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/hotels/owner/my-bookings", {
+      const res = await fetch("https://bookora-server-22ox.onrender.com/api/hotels/owner/my-bookings", {
         headers: { 
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"

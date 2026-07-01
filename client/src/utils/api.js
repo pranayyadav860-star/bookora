@@ -5,8 +5,8 @@
 import axios from 'axios';
 
 // ─── Base URLs from environment ───────────────────────────────────────────────
-export const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-export const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
+export const BASE_URL = process.env.REACT_APP_API_URL || 'https://bookora-server-22ox.onrender.com';
+export const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'https://bookora-server-22ox.onrender.com';
 
 // ─── Axios instance ───────────────────────────────────────────────────────────
 const api = axios.create({

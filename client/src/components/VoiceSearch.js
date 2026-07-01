@@ -36,7 +36,7 @@ const VoiceSearch = ({ onSearchResult, onListeningChange }) => {
 
   const loadAllHotels = useCallback(async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/hotels");
+      const response = await fetch("https://bookora-server-22ox.onrender.com/api/hotels");
 
       const data = await response.json();
 

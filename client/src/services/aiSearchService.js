@@ -114,7 +114,7 @@ class AISearchService {
   
   static async getAIRecommendations(filters) {
     try {
-      const response = await fetch('http://localhost:5000/api/ai-features/ai-search', {
+      const response = await fetch('https://bookora-server-22ox.onrender.com/api/ai-features/ai-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: JSON.stringify(filters), filters })

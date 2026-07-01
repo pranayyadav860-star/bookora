@@ -56,7 +56,7 @@ function MyBookings() {
         return;
       }
       
-      const res = await fetch("http://localhost:5000/api/bookings/my-bookings", {
+      const res = await fetch("https://bookora-server-22ox.onrender.com/api/bookings/my-bookings", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -86,7 +86,7 @@ function MyBookings() {
     setDownloading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/bookings/invoice/${booking._id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'https://bookora-server-22ox.onrender.com'}/api/bookings/invoice/${booking._id}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -119,7 +119,7 @@ function MyBookings() {
     setSubmitting(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/bookings/cancel/${booking._id}`, {
+      const res = await fetch(`https://bookora-server-22ox.onrender.com/api/bookings/cancel/${booking._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -152,7 +152,7 @@ function MyBookings() {
     setSubmitting(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/bookings/review/${selectedBooking._id}`, {
+      const res = await fetch(`https://bookora-server-22ox.onrender.com/api/bookings/review/${selectedBooking._id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
