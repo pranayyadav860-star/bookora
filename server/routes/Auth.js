@@ -230,4 +230,103 @@ router.get('/providers', (req, res) => {
   });
 });
 
+// ─── SEND OTP ─────────────────────────────────────────────────────────────────
+router.post('/send-otp', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Store OTP in user record or temp collection
+    const User = require('../models/User');
+    await User.findOneAndUpdate(
+      { email: email.toLowerCase() },
+      { otp, otpExpiry: expiry },
+      { upsert: true, new: true }
+    );
+
+    // Send OTP email
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+    });
+
+    await transporter.sendMail({
+      from: `"Bookora" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Your Bookora OTP',
+      html: `<div style="font-family:Arial;padding:20px;"><h2>Your OTP is: <strong style="color:#2563eb">${otp}</strong></h2><p>Valid for 10 minutes.</p></div>`
+    });
+
+    res.json({ success: true, message: 'OTP sent to your email' });
+  } catch (err) {
+    console.error('Send OTP error:', err);
+    res.status(500).json({ error: 'Failed to send OTP' });
+  }
+});
+
+// ─── VERIFY OTP ───────────────────────────────────────────────────────────────
+router.post('/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const User = require('../models/User');
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    if (!user || user.otp !== otp) {
+      return res.status(400).json({ error: 'Invalid OTP' });
+    }
+    if (user.otpExpiry < new Date()) {
+      return res.status(400).json({ error: 'OTP expired. Please request a new one.' });
+    }
+
+    // Clear OTP
+    await User.findOneAndUpdate({ email: email.toLowerCase() }, { otp: null, otpExpiry: null });
+
+    res.json({ success: true, message: 'OTP verified successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to verify OTP' });
+  }
+});
+
+// ─── REGISTER OWNER SECURE ────────────────────────────────────────────────────
+router.post('/register-owner-secure', async (req, res) => {
+  try {
+    const { name, email, password, phone, businessName, businessAddress } = req.body;
+    const bcrypt = require('bcryptjs');
+    const User = require('../models/User');
+
+    const existing = await User.findOne({ email: email.toLowerCase() });
+    if (existing && existing.password) {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const referralCode = `BK${Date.now().toString(36).toUpperCase()}`;
+
+    const user = await User.findOneAndUpdate(
+      { email: email.toLowerCase() },
+      {
+        name, email: email.toLowerCase(), password: hashedPassword,
+        phone, role: 'owner', ownerStatus: 'pending',
+        businessName, businessAddress, referralCode,
+        otp: null, otpExpiry: null
+      },
+      { upsert: true, new: true }
+    );
+
+    const token = createToken(user);
+    res.status(201).json({
+      success: true,
+      token,
+      user: { id: user._id, name: user.name, email: user.email, role: user.role }
+    });
+  } catch (err) {
+    console.error('Register owner error:', err);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
 module.exports = router;
