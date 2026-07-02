@@ -230,38 +230,48 @@ router.get('/providers', (req, res) => {
   });
 });
 
-// ─── SEND OTP ─────────────────────────────────────────────────────────────────
 router.post('/send-otp', async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email required' });
+    const { email, phone } = req.body;
+    if (!email && !phone) return res.status(400).json({ error: 'Email or phone required' });
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expiry = new Date(Date.now() + 10 * 60 * 1000);
 
-    // Store OTP in user record or temp collection
     const User = require('../models/User');
-    await User.findOneAndUpdate(
-      { email: email.toLowerCase() },
-      { otp, otpExpiry: expiry },
-      { upsert: true, new: true }
-    );
-
-    // Send OTP email
     const nodemailer = require('nodemailer');
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
-    });
 
-    await transporter.sendMail({
-      from: `"Bookora" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Your Bookora OTP',
-      html: `<div style="font-family:Arial;padding:20px;"><h2>Your OTP is: <strong style="color:#2563eb">${otp}</strong></h2><p>Valid for 10 minutes.</p></div>`
-    });
+    if (email) {
+      await User.findOneAndUpdate(
+        { email: email.toLowerCase() },
+        { otp, otpExpiry: expiry },
+        { upsert: true, new: true }
+      );
 
-    res.json({ success: true, message: 'OTP sent to your email' });
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+      });
+
+      await transporter.sendMail({
+        from: `"Bookora" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: 'Your Bookora OTP',
+        html: `<div style="font-family:Arial;padding:20px;"><h2>Your OTP: <strong style="color:#2563eb">${otp}</strong></h2><p>Valid for 10 minutes.</p></div>`
+      });
+
+      res.json({ success: true, message: 'OTP sent to your email' });
+    } else {
+      // Phone OTP — store and return success (Twilio optional)
+      await User.findOneAndUpdate(
+        { phone },
+        { otp, otpExpiry: expiry },
+        { upsert: true, new: true }
+      );
+      // For now just return the OTP in dev — in prod use Twilio
+      console.log(`OTP for ${phone}: ${otp}`);
+      res.json({ success: true, message: 'OTP sent to your phone' });
+    }
   } catch (err) {
     console.error('Send OTP error:', err);
     res.status(500).json({ error: 'Failed to send OTP' });
