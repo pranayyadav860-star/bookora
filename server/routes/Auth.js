@@ -2,6 +2,8 @@
 //   1. OAuth callbackURL uses CLIENT_URL env var (not hardcoded localhost)
 //   2. redirectWithToken uses CLIENT_URL env var
 //   3. JWT uses process.env.JWT_SECRET (startup already validates it exists)
+//   4. Phone OTP now actually sends via Fast2SMS (was console.log only)
+//   5. /verify-otp now supports phone as well as email
 
 const express = require('express');
 const router = express.Router();
@@ -9,6 +11,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const User = require('../models/User');
+const { sendOtp: sendFast2SmsOtp } = require('../services/fast2sms'); // ADDED
 
 // ─── CONDITIONAL OAUTH STRATEGY IMPORTS ───────────────────────────────────────
 let GoogleStrategy, FacebookStrategy, MicrosoftStrategy;
@@ -230,6 +233,7 @@ router.get('/providers', (req, res) => {
   });
 });
 
+// ─── SEND OTP ─────────────────────────────────────────────────────────────────
 router.post('/send-otp', async (req, res) => {
   try {
     const { email, phone } = req.body;
@@ -238,9 +242,6 @@ router.post('/send-otp', async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiry = new Date(Date.now() + 10 * 60 * 1000);
 
-    const User = require('../models/User');
-    const nodemailer = require('nodemailer');
-
     if (email) {
       await User.findOneAndUpdate(
         { email: email.toLowerCase() },
@@ -248,6 +249,7 @@ router.post('/send-otp', async (req, res) => {
         { upsert: true, new: true }
       );
 
+      const nodemailer = require('nodemailer');
       const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
@@ -260,17 +262,28 @@ router.post('/send-otp', async (req, res) => {
         html: `<div style="font-family:Arial;padding:20px;"><h2>Your OTP: <strong style="color:#2563eb">${otp}</strong></h2><p>Valid for 10 minutes.</p></div>`
       });
 
-      res.json({ success: true, message: 'OTP sent to your email' });
+      return res.json({ success: true, message: 'OTP sent to your email' });
     } else {
-      // Phone OTP — store and return success (Twilio optional)
+      // CHANGED: phone OTP now actually sent via Fast2SMS instead of console.log-only
       await User.findOneAndUpdate(
         { phone },
         { otp, otpExpiry: expiry },
         { upsert: true, new: true }
       );
-      // For now just return the OTP in dev — in prod use Twilio
-      console.log(`OTP for ${phone}: ${otp}`);
-      res.json({ success: true, message: 'OTP sent to your phone' });
+
+      try {
+        const result = await sendFast2SmsOtp(phone, otp);
+
+        if (result.return !== true) {
+          console.error('[send-otp] Fast2SMS did not confirm send:', result);
+          return res.status(502).json({ error: 'Failed to send SMS. Please try again.' });
+        }
+
+        return res.json({ success: true, message: 'OTP sent to your phone' });
+      } catch (smsErr) {
+        console.error('[send-otp] Fast2SMS error:', smsErr.response?.data || smsErr.message);
+        return res.status(502).json({ error: 'Failed to send SMS. Please try again.' });
+      }
     }
   } catch (err) {
     console.error('Send OTP error:', err);
@@ -281,9 +294,14 @@ router.post('/send-otp', async (req, res) => {
 // ─── VERIFY OTP ───────────────────────────────────────────────────────────────
 router.post('/verify-otp', async (req, res) => {
   try {
-    const { email, otp } = req.body;
-    const User = require('../models/User');
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const { email, phone, otp } = req.body;
+
+    if (!email && !phone) return res.status(400).json({ error: 'Email or phone required' });
+    if (!otp) return res.status(400).json({ error: 'OTP is required' });
+
+    // CHANGED: now looks up by phone too, not just email
+    const query = email ? { email: email.toLowerCase() } : { phone };
+    const user = await User.findOne(query);
 
     if (!user || user.otp !== otp) {
       return res.status(400).json({ error: 'Invalid OTP' });
@@ -293,10 +311,11 @@ router.post('/verify-otp', async (req, res) => {
     }
 
     // Clear OTP
-    await User.findOneAndUpdate({ email: email.toLowerCase() }, { otp: null, otpExpiry: null });
+    await User.findOneAndUpdate(query, { otp: null, otpExpiry: null });
 
     res.json({ success: true, message: 'OTP verified successfully' });
   } catch (err) {
+    console.error('Verify OTP error:', err);
     res.status(500).json({ error: 'Failed to verify OTP' });
   }
 });
@@ -305,8 +324,6 @@ router.post('/verify-otp', async (req, res) => {
 router.post('/register-owner-secure', async (req, res) => {
   try {
     const { name, email, password, phone, businessName, businessAddress } = req.body;
-    const bcrypt = require('bcryptjs');
-    const User = require('../models/User');
 
     const existing = await User.findOne({ email: email.toLowerCase() });
     if (existing && existing.password) {
