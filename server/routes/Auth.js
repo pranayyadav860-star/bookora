@@ -1,11 +1,11 @@
-// server/routes/Auth.js — COMPLETE WITH EMAIL + PHONE OTP
+// server/routes/Auth.js — COMPLETE WITH BREVO EMAIL API
 
 const express  = require('express');
 const router   = express.Router();
 const bcrypt   = require('bcryptjs');
 const jwt      = require('jsonwebtoken');
 const passport = require('passport');
-const nodemailer = require('nodemailer');
+const https    = require('https');
 const User     = require('../models/User');
 
 // ─── CONDITIONAL OAUTH ────────────────────────────────────────────────────────
@@ -33,14 +33,38 @@ const redirectWithToken = (res, user) => {
   res.redirect(`${clientUrl}/auth-callback?token=${token}&user=${userData}`);
 };
 
-// ─── EMAIL TRANSPORTER (port 587 — works on Render) ──────────────────────────
-const createTransporter = () => nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-  tls: { rejectUnauthorized: false }
-});
+// ─── BREVO HTTP EMAIL (works on Render — no SMTP needed) ─────────────────────
+const sendEmail = async (to, subject, html) => {
+  const body = JSON.stringify({
+    sender:      { name: 'Bookora', email: process.env.EMAIL_USER },
+    to:          [{ email: to }],
+    subject,
+    htmlContent: html,
+  });
+
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: 'api.brevo.com',
+      path:     '/v3/smtp/email',
+      method:   'POST',
+      headers: {
+        'api-key':        process.env.BREVO_API_KEY,
+        'Content-Type':   'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) resolve(data);
+        else reject(new Error(`Brevo error ${res.statusCode}: ${data}`));
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+};
 
 // ─── GOOGLE ───────────────────────────────────────────────────────────────────
 if (GoogleStrategy && process.env.GOOGLE_CLIENT_ID) {
@@ -74,9 +98,9 @@ if (GoogleStrategy && process.env.GOOGLE_CLIENT_ID) {
 // ─── FACEBOOK ─────────────────────────────────────────────────────────────────
 if (FacebookStrategy && process.env.FACEBOOK_APP_ID) {
   passport.use(new FacebookStrategy({
-    clientID:     process.env.FACEBOOK_APP_ID,
-    clientSecret: process.env.FACEBOOK_APP_SECRET,
-    callbackURL:  `${callbackBase}/api/auth/facebook/callback`,
+    clientID:      process.env.FACEBOOK_APP_ID,
+    clientSecret:  process.env.FACEBOOK_APP_SECRET,
+    callbackURL:   `${callbackBase}/api/auth/facebook/callback`,
     profileFields: ['id', 'emails', 'name'],
   }, async (accessToken, refreshToken, profile, done) => {
     try {
@@ -222,36 +246,32 @@ router.post('/send-otp', async (req, res) => {
     if (!email && !phone) return res.status(400).json({ error: 'Email or phone required' });
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+    const expiry = new Date(Date.now() + 10 * 60 * 1000);
 
     if (email) {
-      // ── EMAIL OTP ─────────────────────────────────────────────────────────
+      // ── EMAIL OTP via Brevo ───────────────────────────────────────────────
       await User.findOneAndUpdate(
         { email: email.toLowerCase() },
         { otp, otpExpiry: expiry },
-        { upsert: true, returnDocument: 'after' }
+        { upsert: true, new: true }
       );
 
       try {
-        const transporter = createTransporter();
-        await transporter.sendMail({
-          from: `"Bookora" <${process.env.EMAIL_USER}>`,
-          to: email,
-          subject: 'Your Bookora OTP Code',
-          html: `
-            <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;">
-              <h1 style="color:#1a3c5e;margin-bottom:4px;">BOOKORA</h1>
-              <p style="color:#64748b;margin-bottom:24px;">Luxury Hotel Booking</p>
-              <h2 style="color:#1e293b;margin-bottom:8px;">Your OTP Code</h2>
-              <div style="background:#f0f7ff;border:2px dashed #2563eb;border-radius:10px;padding:20px;text-align:center;margin-bottom:20px;">
-                <span style="font-size:36px;font-weight:900;color:#2563eb;letter-spacing:8px;">${otp}</span>
-              </div>
-              <p style="color:#64748b;font-size:14px;">⏱ Valid for <strong>10 minutes</strong>. Do not share this code with anyone.</p>
-              <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">
-              <p style="color:#94a3b8;font-size:12px;">If you didn't request this, ignore this email.</p>
+        await sendEmail(
+          email,
+          'Your Bookora OTP Code',
+          `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;">
+            <h1 style="color:#1a3c5e;margin-bottom:4px;">BOOKORA</h1>
+            <p style="color:#64748b;margin-bottom:24px;">Luxury Hotel Booking</p>
+            <h2 style="color:#1e293b;margin-bottom:8px;">Your OTP Code</h2>
+            <div style="background:#f0f7ff;border:2px dashed #2563eb;border-radius:10px;padding:20px;text-align:center;margin-bottom:20px;">
+              <span style="font-size:36px;font-weight:900;color:#2563eb;letter-spacing:8px;">${otp}</span>
             </div>
-          `
-        });
+            <p style="color:#64748b;font-size:14px;">⏱ Valid for <strong>10 minutes</strong>. Do not share this code with anyone.</p>
+            <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">
+            <p style="color:#94a3b8;font-size:12px;">If you did not request this, please ignore this email.</p>
+          </div>`
+        );
         console.log(`✅ Email OTP sent to ${email}`);
       } catch (emailErr) {
         console.error('Email OTP error:', emailErr.message);
@@ -267,12 +287,10 @@ router.post('/send-otp', async (req, res) => {
       await User.findOneAndUpdate(
         { phone },
         { otp, otpExpiry: expiry },
-        { upsert: true, returnDocument: 'after' }
+        { upsert: true, new: true }
       );
 
-      // Try Fast2SMS
       try {
-        const https = require('https');
         const params = new URLSearchParams({
           authorization: process.env.FAST2SMS_API_KEY,
           route: 'otp',
@@ -282,31 +300,29 @@ router.post('/send-otp', async (req, res) => {
         });
 
         await new Promise((resolve, reject) => {
-          const req = https.get(
+          const smsReq = https.get(
             `https://www.fast2sms.com/dev/bulkV2?${params}`,
             { headers: { 'cache-control': 'no-cache' } },
-            (res) => {
+            (smsRes) => {
               let data = '';
-              res.on('data', chunk => data += chunk);
-              res.on('end', () => {
+              smsRes.on('data', chunk => data += chunk);
+              smsRes.on('end', () => {
                 const json = JSON.parse(data);
-                console.log('Fast2SMS response:', json);
                 if (json.return === true) resolve(json);
                 else reject(new Error(json.message || 'SMS failed'));
               });
             }
           );
-          req.on('error', reject);
+          smsReq.on('error', reject);
         });
 
         console.log(`✅ SMS OTP sent to ${cleanPhone}`);
-        return res.json({ success: true, message: 'OTP sent to your phone' });
       } catch (smsErr) {
         console.error('SMS OTP error:', smsErr.message);
-        // Fallback: log OTP for testing
         console.log(`📱 [FALLBACK] OTP for ${cleanPhone}: ${otp}`);
-        return res.json({ success: true, message: 'OTP sent to your phone' });
       }
+
+      return res.json({ success: true, message: 'OTP sent to your phone' });
     }
   } catch (err) {
     console.error('Send OTP error:', err);
@@ -362,7 +378,7 @@ router.post('/register-owner-secure', async (req, res) => {
         businessName, businessAddress, referralCode,
         otp: null, otpExpiry: null,
       },
-      { upsert: true, returnDocument: 'after' }
+      { upsert: true, new: true }
     );
 
     const token = createToken(user);
@@ -387,13 +403,17 @@ router.post('/forgot-password', async (req, res) => {
     const resetUrl = `${process.env.CLIENT_URL}/reset-password/${token}`;
 
     try {
-      const transporter = createTransporter();
-      await transporter.sendMail({
-        from: `"Bookora" <${process.env.EMAIL_USER}>`,
-        to: email,
-        subject: 'Reset your Bookora password',
-        html: `<p>Click <a href="${resetUrl}">here</a> to reset your password. Link expires in 1 hour.</p>`
-      });
+      await sendEmail(
+        email,
+        'Reset your Bookora password',
+        `<div style="font-family:Arial,sans-serif;padding:24px;">
+          <h1 style="color:#1a3c5e;">BOOKORA</h1>
+          <h2>Reset your password</h2>
+          <p>Click the button below to reset your password. This link expires in 1 hour.</p>
+          <a href="${resetUrl}" style="display:inline-block;background:#2563eb;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;margin:16px 0;">Reset Password</a>
+          <p style="color:#94a3b8;font-size:12px;">If you didn't request this, ignore this email.</p>
+        </div>`
+      );
     } catch (e) { console.error('Forgot password email error:', e.message); }
 
     res.json({ success: true, message: 'Password reset link sent to your email' });

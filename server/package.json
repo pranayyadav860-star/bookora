@@ -13,6 +13,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@getbrevo/brevo": "^6.0.2",
     "@react-pdf/renderer": "^4.5.1",
     "bcryptjs": "^3.0.3",
     "cashfree-sdk": "^0.1.1",
