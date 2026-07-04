@@ -762,22 +762,18 @@ function Register() {
                 </div>
 
                 {/* Social Register */}
-                {/* Social Login */}
-<div className="grid grid-cols-4 gap-3 mb-6">
-  {SOCIAL_PROVIDERS.map(({ key, Icon }) => (
-    <div key={key} className="relative group">
-      <button
-        disabled
-        className="w-full flex items-center justify-center p-2.5 border border-white/10 bg-white/5 rounded-xl text-slate-500 cursor-not-allowed opacity-50"
-      >
-        <Icon size={18} />
-      </button>
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-        Coming Soon
-      </div>
-    </div>
-  ))}
-</div>
+                <div className="grid grid-cols-4 gap-3">
+                  {SOCIAL_PROVIDERS.map(({ key, Icon }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => handleSocialRegister(key)}
+                      className="flex items-center justify-center p-2.5 border border-white/10 bg-white/5 rounded-xl text-slate-300 hover:text-white hover:-translate-y-1 hover:shadow-lg hover:shadow-black/30 transition-all duration-200"
+                    >
+                      <Icon size={18} />
+                    </button>
+                  ))}
+                </div>
               </form>
             )}
 
