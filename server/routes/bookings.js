@@ -1,35 +1,58 @@
 // server/routes/bookings.js
-// COMPLETE WITH LOYALTY POINTS + userId FIX
+// COMPLETE WITH LOYALTY POINTS + BREVO EMAIL API
 
 const express = require("express");
-const router = express.Router();
+const router  = express.Router();
+const https   = require("https");
 const Booking = require("../models/Booking");
 const Loyalty = require("../models/Loyalty");
-const Hotel = require("../models/Hotel");
-const User = require("../models/User");
-const nodemailer = require("nodemailer");
-const auth = require("../middleware/auth");
+const Hotel   = require("../models/Hotel");
+const User    = require("../models/User");
+const auth    = require("../middleware/auth");
 const { generatePDFInvoice } = require("../utils/pdfInvoice");
 
 /* =========================
-   EMAIL CONFIG
+   BREVO EMAIL (HTTP API — works on Render, no SMTP needed)
 ========================= */
-let transporter;
-try {
-  transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    }
+const sendEmailBrevo = async (to, subject, html, attachments = []) => {
+  const body = JSON.stringify({
+    sender:      { name: "Bookora", email: process.env.EMAIL_USER },
+    to:          [{ email: to }],
+    subject,
+    htmlContent: html,
+    attachment:  attachments,
   });
-  console.log("Email transporter configured");
-} catch (err) {
-  console.error("Email config error:", err);
-}
 
-// ========== HELPER: ADD LOYALTY POINTS ==========
-async function addLoyaltyPoints(userId, bookingAmount, bookingId, hotelName, userEmail) {
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: "api.brevo.com",
+      path:     "/v3/smtp/email",
+      method:   "POST",
+      headers: {
+        "api-key":        process.env.BREVO_API_KEY,
+        "Content-Type":   "application/json",
+        "Content-Length": Buffer.byteLength(body),
+      },
+    }, (res) => {
+      let data = "";
+      res.on("data", chunk => data += chunk);
+      res.on("end", () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) resolve(data);
+        else reject(new Error(`Brevo error ${res.statusCode}: ${data}`));
+      });
+    });
+    req.on("error", reject);
+    req.write(body);
+    req.end();
+  });
+};
+
+console.log("Email configured via Brevo HTTP API");
+
+/* =========================
+   HELPER: ADD LOYALTY POINTS
+========================= */
+async function addLoyaltyPoints(userId, bookingAmount, bookingId, hotelName) {
   try {
     const pointsEarned = Math.floor(bookingAmount / 100);
     if (pointsEarned === 0) return 0;
@@ -43,27 +66,24 @@ async function addLoyaltyPoints(userId, bookingAmount, bookingId, hotelName, use
     }
 
     const oldPoints = loyalty.points;
-    const oldTier = loyalty.tier;
+    const oldTier   = loyalty.tier;
 
-    loyalty.points += pointsEarned;
+    loyalty.points         += pointsEarned;
     loyalty.lifetimePoints += pointsEarned;
     loyalty.transactions.push({
-      type: "earned",
-      points: pointsEarned,
+      type: "earned", points: pointsEarned,
       description: `Earned ${pointsEarned} points from booking at ${hotelName}`,
-      bookingId,
-      date: new Date()
+      bookingId, date: new Date()
     });
 
-    if (loyalty.lifetimePoints >= 50000) loyalty.tier = "Platinum";
+    if      (loyalty.lifetimePoints >= 50000) loyalty.tier = "Platinum";
     else if (loyalty.lifetimePoints >= 20000) loyalty.tier = "Gold";
-    else if (loyalty.lifetimePoints >= 5000) loyalty.tier = "Silver";
-    else loyalty.tier = "Bronze";
+    else if (loyalty.lifetimePoints >= 5000)  loyalty.tier = "Silver";
+    else                                       loyalty.tier = "Bronze";
 
     await loyalty.save();
     console.log(`✅ Added ${pointsEarned} loyalty points to user ${userId}`);
     console.log(`   Old: ${oldPoints} | New: ${loyalty.points} | Tier: ${oldTier} → ${loyalty.tier}`);
-
     return pointsEarned;
   } catch (error) {
     console.error("❌ Error adding loyalty points:", error);
@@ -114,7 +134,7 @@ router.post("/add", async (req, res) => {
       bookingData.bookingId = `BOOK${Date.now()}${Math.floor(Math.random() * 1000)}`;
     }
 
-    // ── FIX: Attach userId from token or lookup by email ──────────────────
+    // Attach userId
     if (req.user?.id) {
       bookingData.userId = req.user.id;
     } else if (bookingData.userEmail) {
@@ -122,107 +142,88 @@ router.post("/add", async (req, res) => {
       if (user) bookingData.userId = user._id;
     }
 
-    const booking = new Booking(bookingData);
+    const booking     = new Booking(bookingData);
     const savedBooking = await booking.save();
     console.log("Booking created:", savedBooking._id);
 
-    // ── Loyalty points ────────────────────────────────────────────────────
+    // Loyalty points
     let pointsEarned = 0;
     if (bookingData.userEmail) {
       const user = await User.findOne({ email: bookingData.userEmail });
       if (user) {
-        pointsEarned = await addLoyaltyPoints(
-          user._id,
-          bookingData.amount,
-          savedBooking._id,
-          bookingData.hotelName,
-          bookingData.userEmail
-        );
-        // Update loyaltyPointsEarned on booking
+        pointsEarned = await addLoyaltyPoints(user._id, bookingData.amount, savedBooking._id, bookingData.hotelName);
         await Booking.findByIdAndUpdate(savedBooking._id, { loyaltyPointsEarned: pointsEarned });
       }
     }
 
-    // ── Hotel booking count ───────────────────────────────────────────────
+    // Hotel booking count
     if (bookingData.hotelId) {
-      try {
-        await Hotel.findByIdAndUpdate(bookingData.hotelId, { $inc: { bookings: 1 } });
-      } catch (hotelErr) {
-        console.error("Error updating hotel count:", hotelErr);
-      }
+      try { await Hotel.findByIdAndUpdate(bookingData.hotelId, { $inc: { bookings: 1 } }); } catch (e) {}
     }
 
-    // ── Get hotel details for invoice ─────────────────────────────────────
+    // Hotel details for invoice
     let hotelAddress = "", hotelCity = "", hotelCategory = "";
     try {
       const hotel = await Hotel.findById(bookingData.hotelId);
-      if (hotel) {
-        hotelAddress  = hotel.address  || "";
-        hotelCity     = hotel.city     || "";
-        hotelCategory = hotel.category || "";
-      }
-    } catch (err) {
-      console.error("Error fetching hotel:", err);
-    }
+      if (hotel) { hotelAddress = hotel.address || ""; hotelCity = hotel.city || ""; hotelCategory = hotel.category || ""; }
+    } catch (e) {}
 
-    // ── Send confirmation email with PDF invoice ──────────────────────────
+    // Send confirmation email via Brevo
     let emailSent = false;
     try {
-      if (transporter && bookingData.userEmail) {
+      if (bookingData.userEmail) {
         const guestDetails = {
           fullName: bookingData.userName || "Guest",
-          email: bookingData.userEmail,
-          phone: bookingData.userPhone || "Not provided",
+          email:    bookingData.userEmail,
+          phone:    bookingData.userPhone || "Not provided",
           specialRequests: bookingData.specialRequests || ""
         };
         const hotelDetails = {
-          address: hotelAddress || bookingData.city,
-          city: hotelCity || bookingData.city,
+          address:  hotelAddress || bookingData.city,
+          city:     hotelCity    || bookingData.city,
           category: hotelCategory
         };
 
         const invoiceBooking = { ...bookingData, loyaltyPointsEarned: pointsEarned };
         const pdfBuffer = await generatePDFInvoice(invoiceBooking, guestDetails, hotelDetails);
 
-        await transporter.sendMail({
-          from: `"Bookora" <${process.env.EMAIL_USER}>`,
-          to: bookingData.userEmail,
-          subject: `Booking Confirmed - ${bookingData.hotelName} | Bookora`,
-          html: `
-            <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;">
-              <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:20px;text-align:center;border-radius:10px 10px 0 0;">
-                <h1 style="color:#eab308;margin:0;">BOOKORA</h1>
-                <p style="color:white;margin:5px 0 0;">Booking Confirmed! 🎉</p>
-              </div>
-              <div style="padding:20px;background:white;">
-                <h2>Dear ${guestDetails.fullName},</h2>
-                <p>Your booking has been successfully confirmed. Please find your invoice attached.</p>
-                <div style="background:#f3f4f6;padding:15px;border-radius:10px;margin:20px 0;">
-                  <p><strong>🏨 Hotel:</strong> ${bookingData.hotelName}</p>
-                  <p><strong>📅 Check-in:</strong> ${new Date(bookingData.checkIn).toLocaleDateString()}</p>
-                  <p><strong>📅 Check-out:</strong> ${new Date(bookingData.checkOut).toLocaleDateString()}</p>
-                  <p><strong>💰 Total Amount:</strong> ₹${bookingData.amount}</p>
-                  <p><strong>🆔 Booking ID:</strong> ${bookingData.bookingId}</p>
-                  ${pointsEarned > 0 ? `<p><strong>⭐ Loyalty Points Earned:</strong> +${pointsEarned} points</p>` : ""}
-                </div>
-                <p>Your invoice is attached to this email.</p>
-                <p>For assistance, contact us at support@bookora.com</p>
-                <hr style="margin:20px 0;">
-                <p style="font-size:12px;color:#6b7280;text-align:center;">Bookora - Luxury Hotel Booking Platform</p>
-              </div>
+        const emailHtml = `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;">
+            <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:20px;text-align:center;border-radius:10px 10px 0 0;">
+              <h1 style="color:#eab308;margin:0;">BOOKORA</h1>
+              <p style="color:white;margin:5px 0 0;">Booking Confirmed! 🎉</p>
             </div>
-          `,
-          attachments: [{
-            filename: `Invoice_${bookingData.bookingId}.pdf`,
-            content: pdfBuffer,
-            contentType: "application/pdf"
-          }]
-        });
+            <div style="padding:20px;background:white;">
+              <h2>Dear ${guestDetails.fullName},</h2>
+              <p>Your booking has been successfully confirmed. Please find your invoice attached.</p>
+              <div style="background:#f3f4f6;padding:15px;border-radius:10px;margin:20px 0;">
+                <p><strong>🏨 Hotel:</strong> ${bookingData.hotelName}</p>
+                <p><strong>📅 Check-in:</strong> ${new Date(bookingData.checkIn).toLocaleDateString()}</p>
+                <p><strong>📅 Check-out:</strong> ${new Date(bookingData.checkOut).toLocaleDateString()}</p>
+                <p><strong>💰 Total Amount:</strong> ₹${bookingData.amount}</p>
+                <p><strong>🆔 Booking ID:</strong> ${bookingData.bookingId}</p>
+                ${pointsEarned > 0 ? `<p><strong>⭐ Loyalty Points Earned:</strong> +${pointsEarned} points</p>` : ""}
+              </div>
+              <p>Your invoice is attached to this email.</p>
+              <p>For assistance, contact us at support@bookora.com</p>
+              <hr style="margin:20px 0;">
+              <p style="font-size:12px;color:#6b7280;text-align:center;">Bookora - Luxury Hotel Booking Platform</p>
+            </div>
+          </div>
+        `;
+
+        await sendEmailBrevo(
+          bookingData.userEmail,
+          `Booking Confirmed - ${bookingData.hotelName} | Bookora`,
+          emailHtml,
+          [{ name: `Invoice_${bookingData.bookingId}.pdf`, content: pdfBuffer.toString("base64") }]
+        );
+
         console.log("Email sent successfully to:", bookingData.userEmail);
         emailSent = true;
       }
     } catch (emailErr) {
-      console.error("Email sending failed:", emailErr);
+      console.error("Email sending failed:", emailErr.message);
     }
 
     res.json({
@@ -249,7 +250,7 @@ router.put("/cancel/:id", auth, async (req, res) => {
     if (booking.userEmail !== req.user.email) return res.status(403).json({ msg: "You can only cancel your own bookings" });
     if (booking.status === "Cancelled") return res.status(400).json({ msg: "Booking is already cancelled" });
 
-    booking.status = "Cancelled";
+    booking.status        = "Cancelled";
     booking.paymentStatus = "Cancelled";
     await booking.save();
 
@@ -258,15 +259,18 @@ router.put("/cancel/:id", auth, async (req, res) => {
     }
 
     try {
-      if (transporter && booking.userEmail) {
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: booking.userEmail,
-          subject: `Booking Cancelled - ${booking.hotelName} | Bookora`,
-          html: `<p>Your booking for ${booking.hotelName} has been cancelled. Refund within 5-7 days.</p>`
-        });
-      }
-    } catch (e) {}
+      await sendEmailBrevo(
+        booking.userEmail,
+        `Booking Cancelled - ${booking.hotelName} | Bookora`,
+        `<div style="font-family:Arial;padding:20px;">
+          <h1 style="color:#1a3c5e;">BOOKORA</h1>
+          <h2>Booking Cancelled</h2>
+          <p>Your booking for <strong>${booking.hotelName}</strong> has been cancelled.</p>
+          <p>Refund will be processed within 5-7 business days.</p>
+          <p>Booking ID: ${booking.bookingId || booking._id}</p>
+        </div>`
+      );
+    } catch (e) { console.error("Cancel email error:", e.message); }
 
     res.json({ msg: "Booking cancelled successfully", booking });
   } catch (err) {
@@ -292,11 +296,11 @@ router.put("/cancel-by-owner/:id", auth, async (req, res) => {
     if (!isAuthorized) return res.status(403).json({ msg: "Not authorized" });
     if (booking.status === "Cancelled") return res.status(400).json({ msg: "Already cancelled" });
 
-    booking.status = "Cancelled";
-    booking.paymentStatus = "Cancelled";
-    booking.cancellationReason = reason || "Cancelled by hotel";
-    booking.cancelledBy = cancelledBy || (req.user.role === "admin" ? "admin" : "owner");
-    booking.cancelledAt = new Date();
+    booking.status              = "Cancelled";
+    booking.paymentStatus       = "Cancelled";
+    booking.cancellationReason  = reason || "Cancelled by hotel";
+    booking.cancelledBy         = cancelledBy || (req.user.role === "admin" ? "admin" : "owner");
+    booking.cancelledAt         = new Date();
     await booking.save();
 
     if (booking.hotelId) {
@@ -304,15 +308,19 @@ router.put("/cancel-by-owner/:id", auth, async (req, res) => {
     }
 
     try {
-      if (transporter && booking.userEmail) {
-        await transporter.sendMail({
-          from: `"Bookora" <${process.env.EMAIL_USER}>`,
-          to: booking.userEmail,
-          subject: `Booking Cancelled - ${booking.hotelName} | Bookora`,
-          html: `<p>Your booking for ${booking.hotelName} was cancelled. Reason: ${reason || "Hotel management decision"}. Refund within 5-7 days.</p>`
-        });
-      }
-    } catch (e) {}
+      await sendEmailBrevo(
+        booking.userEmail,
+        `Booking Cancelled - ${booking.hotelName} | Bookora`,
+        `<div style="font-family:Arial;padding:20px;">
+          <h1 style="color:#1a3c5e;">BOOKORA</h1>
+          <h2>Booking Cancelled</h2>
+          <p>Your booking for <strong>${booking.hotelName}</strong> was cancelled.</p>
+          <p><strong>Reason:</strong> ${reason || "Hotel management decision"}</p>
+          <p>Refund will be processed within 5-7 business days.</p>
+          <p>Booking ID: ${booking.bookingId || booking._id}</p>
+        </div>`
+      );
+    } catch (e) { console.error("Cancel email error:", e.message); }
 
     res.json({ msg: "Booking cancelled successfully", booking });
   } catch (err) {
@@ -340,9 +348,9 @@ router.post("/review/:id", auth, async (req, res) => {
         const hotel = await Hotel.findById(booking.hotelId);
         if (hotel) {
           hotel.reviews.unshift({
-            name: req.user.name || req.user.email.split("@")[0] || "Guest",
-            email: req.user.email,
-            rating: parseInt(rating),
+            name:    req.user.name || req.user.email.split("@")[0] || "Guest",
+            email:   req.user.email,
+            rating:  parseInt(rating),
             comment
           });
           const total = hotel.reviews.reduce((sum, r) => sum + Number(r.rating), 0);
@@ -408,8 +416,8 @@ router.get("/invoice/:id", auth, async (req, res) => {
 
     const guestDetails = {
       fullName: booking.userName || "Guest",
-      email: booking.userEmail,
-      phone: booking.userPhone || "Not provided",
+      email:    booking.userEmail,
+      phone:    booking.userPhone || "Not provided",
       specialRequests: booking.specialRequests || ""
     };
     const hotelDetails = { address: hotelAddress || booking.city, city: hotelCity || booking.city, category: hotelCategory };
@@ -425,7 +433,7 @@ router.get("/invoice/:id", auth, async (req, res) => {
 });
 
 /* =========================
-   DELETE BOOKING by ID (Admin)
+   DELETE BOOKING (Admin)
 ========================= */
 router.delete("/:id", auth, async (req, res) => {
   try {
