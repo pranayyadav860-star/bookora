@@ -134,8 +134,10 @@ router.post('/register', async (req, res) => {
     if (password.length < 8)
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
-    const existing = await User.findOne({ email: email.toLowerCase() });
-    if (existing) return res.status(409).json({ error: 'Email already registered' });
+    if (email) {
+  const existing = await User.findOne({ email: email.toLowerCase() });
+  if (existing) return res.status(409).json({ error: 'Email already registered' });
+}
 
     const hashedPassword = await bcrypt.hash(password, 12);
     const userReferralCode = `BK${Date.now().toString(36).toUpperCase()}`;
@@ -146,9 +148,13 @@ router.post('/register', async (req, res) => {
     }
 
     const user = await User.create({
-      name, email: email.toLowerCase(), password: hashedPassword,
-      phone: phone || null, referralCode: userReferralCode, referrerId,
-    });
+  name,
+  email: email ? email.toLowerCase() : undefined,
+  password: hashedPassword,
+  phone: phone || null,
+  referralCode: userReferralCode,
+  referrerId,
+});
 
     const token = createToken(user);
     res.status(201).json({
@@ -358,10 +364,15 @@ router.post('/verify-otp', async (req, res) => {
 // ─── REGISTER OWNER SECURE ────────────────────────────────────────────────────
 router.post('/register-owner-secure', async (req, res) => {
   try {
-    const { name, email, password, phone, businessName, businessAddress } = req.body;
-    if (!name || !email || !password)
-      return res.status(400).json({ error: 'Name, email and password are required' });
-
+    // Handle both JSON and FormData
+const name            = req.body?.name            || req.body?.get?.('name');
+const email           = req.body?.email           || req.body?.get?.('email');
+const password        = req.body?.password        || req.body?.get?.('password');
+const phone           = req.body?.phone           || req.body?.get?.('phone');
+const businessName    = req.body?.businessName    || req.body?.get?.('businessName');
+const businessAddress = req.body?.businessAddress || req.body?.get?.('businessAddress');
+    if (!name || (!email && !phone) || !password)
+  return res.status(400).json({ error: 'Name, email or phone, and password are required' });
     const existing = await User.findOne({ email: email.toLowerCase() });
     if (existing && existing.password && existing.role === 'owner') {
       return res.status(409).json({ error: 'Email already registered as owner' });
