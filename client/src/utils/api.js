@@ -31,4 +31,11 @@ api.interceptors.response.use(
   }
 );
 
+// Keep Render server alive — ping every 14 minutes to prevent cold starts
+const keepAlive = () => {
+  fetch(`${BASE_URL}/health`).catch(() => {});
+};
+keepAlive();
+setInterval(keepAlive, 14 * 60 * 1000);
+
 export default api;
