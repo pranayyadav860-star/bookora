@@ -354,7 +354,19 @@ router.post('/verify-otp', async (req, res) => {
     }
 
     await User.findOneAndUpdate(query, { otp: null, otpExpiry: null });
-    res.json({ success: true, message: 'OTP verified successfully' });
+
+// Generate a short-lived verification token so the frontend can proceed
+const verificationToken = jwt.sign(
+  { verified: true, email: email || null, phone: phone || null },
+  process.env.JWT_SECRET,
+  { expiresIn: '15m' }
+);
+
+res.json({ 
+  success: true, 
+  message: 'OTP verified successfully',
+  verificationToken,
+});
   } catch (err) {
     console.error('Verify OTP error:', err);
     res.status(500).json({ error: 'Failed to verify OTP' });
