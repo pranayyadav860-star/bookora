@@ -147,14 +147,20 @@ router.post('/register', async (req, res) => {
       if (referrer) referrerId = referrer._id;
     }
 
-    const user = await User.create({
-  name,
-  email: email ? email.toLowerCase() : undefined,
-  password: hashedPassword,
-  phone: phone || null,
-  referralCode: userReferralCode,
-  referrerId,
-});
+    const user = await User.findOneAndUpdate(
+  { email: email.toLowerCase() },
+  {
+    name,
+    email: email.toLowerCase(),
+    password: hashedPassword,
+    phone: phone || null,
+    referralCode: userReferralCode,
+    referrerId,
+    otp: null,
+    otpExpiry: null,
+  },
+  { upsert: true, new: true }
+);
 
     const token = createToken(user);
     res.status(201).json({
