@@ -136,7 +136,7 @@ router.post('/register', async (req, res) => {
 
     if (email) {
   const existing = await User.findOne({ email: email.toLowerCase() });
-  if (existing) return res.status(409).json({ error: 'Email already registered' });
+  if (existing && existing.password) return res.status(409).json({ error: 'Email already registered' });
 }
 
     const hashedPassword = await bcrypt.hash(password, 12);
@@ -448,9 +448,10 @@ router.post('/forgot-password', async (req, res) => {
 // ─── RESET PASSWORD ───────────────────────────────────────────────────────────
 router.post('/reset-password/:token', async (req, res) => {
   try {
-    const { password } = req.body;
+    const { password, newPassword } = req.body;
+const newPass = password || newPassword;
     const decoded = jwt.verify(req.params.token, process.env.JWT_SECRET);
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await bcrypt.hash(newPass, 12);
     await User.findByIdAndUpdate(decoded.id, { password: hashedPassword });
     res.json({ success: true, message: 'Password reset successfully' });
   } catch (err) {
